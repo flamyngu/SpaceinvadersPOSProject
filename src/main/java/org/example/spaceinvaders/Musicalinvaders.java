@@ -1,6 +1,7 @@
 package org.example.spaceinvaders;
 
 import javafx.animation.AnimationTimer;
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Scene;
@@ -11,10 +12,12 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 //import javafx.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class Musicalinvaders extends Application {
 
@@ -138,6 +141,9 @@ public class Musicalinvaders extends Application {
             }
         }
     }
+    private void createBossEnemy(){
+
+    }
     private void createScoreLabel(){
         scoreLabel.set(new Label("Score: 0"));
         scoreLabel.get().setTextFill(Color.WHITE);
@@ -159,7 +165,14 @@ public class Musicalinvaders extends Application {
                 updateProjectiles();
                 // updateEnemies(); // TODO: Gegnerbewegung hinzufügen (z.B. im Takt?)
                 checkCollisions();
-
+                if(enemies.isEmpty()){
+                    //creates a little pause between the current and next wave of enemies
+                    PauseTransition pause = new PauseTransition(Duration.seconds(2));
+                    pause.setOnFinished(event -> {
+                        createEnemies();
+                    });
+                    pause.play();
+                }
                 // TODO: Spielende prüfen (alle Gegner besiegt / Gegner erreichen Boden / Spieler getroffen)
             }
         };
