@@ -25,7 +25,9 @@ public class GameUpdater {
         handlePlayerShooting(now);
         updateProjectiles(deltaTime);
         checkCollisions();
-        entityManager.spawnEnemyWaveWithDelay(); // Wellen-Spawnen hier oder in der Hauptschleife
+        if(!entityManager.isBossActive() && entityManager.getEnemies().isEmpty()){
+            entityManager.spawnNextWaveOrBoss(); //normale Welle oder Boss?
+        }
     }
 
     private void updatePlayer(long now, double deltaTime) {
@@ -69,22 +71,37 @@ public class GameUpdater {
         Iterator<Rectangle> projIterator = entityManager.getPlayerProjectiles().iterator();
         while (projIterator.hasNext()) {
             Rectangle projectile = projIterator.next();
-            Iterator<Enemy> enemyIterator = entityManager.getEnemies().iterator();
-            while (enemyIterator.hasNext()) {
-                Enemy enemy = enemyIterator.next();
 
-                if (projectile.getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {
-                    // Kollision!
-                    projIterator.remove(); // Aus der Projektil-Liste des EntityManagers entfernen
-                    entityManager.removeProjectileNode(projectile); // Aus dem Pane entfernen
-
-                    enemy.takeHit();
-                    if (!enemy.isAlive()) {
-                        enemyIterator.remove(); // Aus der Gegner-Liste des EntityManagers entfernen
-                        entityManager.removeEnemy(enemy); // Aus dem Pane entfernen
-                        uiManager.addScore(enemy.getPoints());
+            if(entityManager.isBossActive() && entityManager.getBossEnemy() != null){
+                Enemy boss = entityManager.getBossEnemy();
+                if(projectile.getBoundsInParent().intersects(boss.getNode().getBoundsInParent())){
+                    projIterator.remove();
+                    entityManager.removeProjectileNode(projectile);
+                    boss.takeHit();
+                    if(!boss.isAlive()){
+                        uiManager.addScore(boss.getPoints());
+                        uiManager.showBossDefeatedMessage();
+                        entityManager.bossDefeated();
                     }
-                    break; // Projektil kann nur einen Gegner pro Frame treffen/zerstören
+                    continue;
+                }
+            }else {
+
+                Iterator<Enemy> enemyIterator = entityManager.getEnemies().iterator();
+                while (enemyIterator.hasNext()) {
+                    Enemy enemy = enemyIterator.next();
+
+                    if (projectile.getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {
+                        projIterator.remove(); // Aus der Projektil-Liste des EntityManagers entfernen
+                        entityManager.removeProjectileNode(projectile); // Aus dem Pane entfernen
+                        enemy.takeHit();
+                        if (!enemy.isAlive()) {
+                            enemyIterator.remove(); // Aus der Gegner-Liste des EntityManagers entfernen
+                            entityManager.removeEnemy(enemy); // Aus dem Pane entfernen
+                            uiManager.addScore(enemy.getPoints());
+                        }
+                        break; // Projektil kann nur einen Gegner pro Frame treffen/zerstören
+                    }
                 }
             }
         }

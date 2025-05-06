@@ -13,7 +13,11 @@ import java.util.List;
 public class GameEntityManager {
     private Pane gamePane;
     private GameDimensions gameDimensions;
-    private UIManager uiManager; // Für Score-Updates bei Bedarf
+    private UIManager uiManager;// Für Score-Updates bei Bedarf
+
+    private Enemy bossEnemy = null;
+    private boolean bossActive = false;
+    private int currentWaveNumber = 0;
 
     private Player player;
     private List<Enemy> enemies = new ArrayList<>();
@@ -31,6 +35,7 @@ public class GameEntityManager {
     }
 
     public void createEnemies() {
+        if(bossActive) return;
         // Alte Gegner-Nodes entfernen
         for (Enemy oldEnemy : enemies) {
             if (oldEnemy.getNode() != null) {
@@ -71,20 +76,61 @@ public class GameEntityManager {
         gamePane.getChildren().add(projectile);
     }
 
+    public void createBoss() {
+        if(bossActive) return; //Boss ist bereits vorhanden
+        //Alte Gegner aus dem Array werfen
+        for(Enemy oldEnemy : new ArrayList<>(enemies)) {
+            gamePane.getChildren().remove(oldEnemy.getNode());
+            enemies.remove(oldEnemy);
+        }
+        enemies.clear();
+
+        double bossWidth = gameDimensions.getEnemyWidth()*GameDimensions.BOSS_WIDTH_MULTIPLIER;
+        double bossHeight = gameDimensions.getEnemyHeight()*GameDimensions.BOSS_HEIGHT_MULTIPLIER;
+
+        Rectangle bossShape = new Rectangle(bossWidth, bossHeight);
+        bossShape.setFill(Color.DARKRED);
+        bossShape.setX(gameDimensions.getWidth()/2 - bossWidth/2);
+        bossShape.setY(gameDimensions.getHeight()*0.1);
+
+        this.bossEnemy = new Enemy(bossShape,GameDimensions.BOSS_HEALTH, GameDimensions.BOSS_POINTS);
+        this.bossActive = true;
+        gamePane.getChildren().add(bossShape);
+        uiManager.showBossSpawnMessage();
+    }
+
     public void spawnEnemyWaveInitial() {
-        if (enemies.isEmpty()) {
+        if (enemies.isEmpty() && !bossActive) {
+            currentWaveNumber = 1;
             createEnemies(); // Erste Welle sofort
+            uiManager.showWaveStartMessage(currentWaveNumber);
         }
     }
 
-    public void spawnEnemyWaveWithDelay() {
-        if (enemies.isEmpty()) {
-            PauseTransition pause = new PauseTransition(Duration.seconds(1));
-            pause.setOnFinished(event -> createEnemies());
-            pause.play();
+    public void spawnNextWaveOrBoss() {
+        if (enemies.isEmpty() && !bossActive) {
+            currentWaveNumber++;
+            boolean spawnBossNow = currentWaveNumber == GameDimensions.WAVE_NUMBER_TO_SPAWN_BOSS;
+            //            } else if (uiManager.getCurrentScore() >= GameDimensions.SCORE_TO_SPAWN_BOSS_ALTERNATIVE) {
+            //                spawnBossNow = true;
+            //                  TODO: create a Flag that tells the programm that the Boss has already been spawned(roll the credentials/End of game)
+            //            }
+            if (spawnBossNow) {
+                createBoss();
+            }else {
+                uiManager.showWaveClearMessage(currentWaveNumber);
+                PauseTransition pause = new PauseTransition(Duration.seconds(1));
+                pause.setOnFinished(event -> createEnemies());
+                pause.play();
+            }
+        }else if(bossActive &&bossEnemy == null) {
+            bossDefeated();
         }
     }
 
+    public int getCurrentWaveNumber(){
+        return currentWaveNumber;
+    }
 
     // Methoden zum Entfernen (werden vom GameUpdater aufgerufen nach Kollision)
     public void removeEnemy(Enemy enemy) {
@@ -101,9 +147,19 @@ public class GameEntityManager {
         }
     }
 
+    public void bossDefeated() {
+        if(bossEnemy != null) {
+            gamePane.getChildren().remove(bossEnemy.getNode());
+        }
+        this.bossActive = false;
+        this.bossEnemy = null;
+    }
+
 
     // Getter
     public Player getPlayer() { return player; }
     public List<Enemy> getEnemies() { return enemies; }
     public List<Rectangle> getPlayerProjectiles() { return playerProjectiles; }
+    public boolean isBossActive() { return bossActive; }
+    public Enemy getBossEnemy() { return bossEnemy;}
 }

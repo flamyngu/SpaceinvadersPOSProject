@@ -4,15 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="kleiner push für automatisch anpassbare primaryStage (Bildschirm auflösung)  am 6.mai.25">
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Enemy.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/InputHandler.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Player.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/UIManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Musicalinvaders.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" afterDir="false" />
+    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="kleiner push, aufgeteilt in 8 Datein  am 6.mai.25">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/module-info.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/module-info.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/UIManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/UIManager.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -47,6 +45,9 @@
         <option name="mavenHomeTypeForPersistence" value="WRAPPER" />
       </MavenGeneralSettings>
     </option>
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 8
@@ -149,7 +150,7 @@
       <workItem from="1746511734356" duration="5192000" />
       <workItem from="1746531197396" duration="3243000" />
       <workItem from="1746561588938" duration="9000" />
-      <workItem from="1746561694681" duration="1466000" />
+      <workItem from="1746561694681" duration="5430000" />
     </task>
     <task id="LOCAL-00001" summary="First Logic + Score">
       <option name="closed" value="true" />
@@ -175,7 +176,15 @@
       <option name="project" value="LOCAL" />
       <updated>1746562907242</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="kleiner push, aufgeteilt in 8 Datein  am 6.mai.25">
+      <option name="closed" value="true" />
+      <created>1746563448546</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1746563448546</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -185,6 +194,7 @@
     <MESSAGE value="First Logic + Score" />
     <MESSAGE value="2 Sec timeout  am 6.mai.25" />
     <MESSAGE value="kleiner push für automatisch anpassbare primaryStage (Bildschirm auflösung)  am 6.mai.25" />
-    <option name="LAST_COMMIT_MESSAGE" value="kleiner push für automatisch anpassbare primaryStage (Bildschirm auflösung)  am 6.mai.25" />
+    <MESSAGE value="kleiner push, aufgeteilt in 8 Datein  am 6.mai.25" />
+    <option name="LAST_COMMIT_MESSAGE" value="kleiner push, aufgeteilt in 8 Datein  am 6.mai.25" />
   </component>
 </project>

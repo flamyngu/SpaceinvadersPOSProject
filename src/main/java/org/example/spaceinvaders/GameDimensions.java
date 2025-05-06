@@ -13,6 +13,12 @@ public class GameDimensions {
     public static final double ENEMY_SPACING_Y_RATIO = 10.0 / 600.0;
     public static final double PROJECTILE_WIDTH_RATIO = 5.0 / 800.0;
     public static final double PROJECTILE_HEIGHT_RATIO = 15.0 / 600.0;
+    public static final int BOSS_HEALTH = 10;
+    public static final int BOSS_POINTS = 250; // Punkte für das Besiegen des Bosses
+    public static final double BOSS_WIDTH_MULTIPLIER = 4.5; // Boss ist 4.5x so breit wie ein normaler Gegner
+    public static final double BOSS_HEIGHT_MULTIPLIER = 2.0; // Boss ist 2x so hoch wie ein normaler Gegner
+    public static final int WAVE_NUMBER_TO_SPAWN_BOSS = 3;
+    public static final int SCORE_TO_SPAWN_BOSS_ALTERNATIVE = 1000;
 
     // Dynamisch berechnete Größen (könnten auch public final sein)
     private final double playerWidth;
