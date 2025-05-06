@@ -5,6 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="2 Sec timeout  am 6.mai.25">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Musicalinvaders.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Musicalinvaders.java" afterDir="false" />
     </list>
@@ -23,6 +24,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;flamyngu&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/flamyngu/SpaceinvadersPOSProject.git&quot;,
+    &quot;accountId&quot;: &quot;13b00220-d775-4ae1-959c-3943886afd1d&quot;
+  }
+}</component>
   <component name="MavenImportPreferences">
     <option name="generalSettings">
       <MavenGeneralSettings>
@@ -35,6 +48,7 @@
 }</component>
   <component name="ProjectId" id="2wRCGILiwoCyzIqnCqWEDEwvkRU" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <OptionsSetting value="false" id="Update" />
     <ConfirmationsSetting value="2" id="Add" />
   </component>
   <component name="ProjectViewState">
@@ -46,6 +60,7 @@
     &quot;Application.Musicalinvaders.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;master&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
@@ -96,7 +111,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="jdk-22-openjdk-22-4caba194b151-f504ca98" />
+        <option value="bundled-jdk-9823dce3aa75-a94e463ab2e7-intellij.indexing.shared.core-IU-243.26053.27" />
+        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-IU-243.26053.27" />
       </set>
     </attachedChunks>
   </component>
@@ -112,6 +128,8 @@
       <workItem from="1746442331563" duration="740000" />
       <workItem from="1746511734356" duration="5192000" />
       <workItem from="1746531197396" duration="3243000" />
+      <workItem from="1746561588938" duration="9000" />
+      <workItem from="1746561694681" duration="1140000" />
     </task>
     <task id="LOCAL-00001" summary="First Logic + Score">
       <option name="closed" value="true" />

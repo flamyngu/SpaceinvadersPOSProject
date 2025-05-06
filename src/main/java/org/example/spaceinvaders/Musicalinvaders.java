@@ -18,24 +18,34 @@ import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import javafx.stage.Screen;
+import javafx.geometry.Rectangle2D;
 
 public class Musicalinvaders extends Application {
 
+    private static final double ENEMY_HEIGHT_RATIO = 40.0/800.0;
     // --- Konstanten ---
-    private static final double WINDOW_WIDTH = 800;
-    private static final double WINDOW_HEIGHT = 1070;
-    private static final double PLAYER_WIDTH = 60; // Platzhalter-Breite
-    private static final double PLAYER_HEIGHT = 30; // Platzhalter-Höhe
-    private static final double PLAYER_SPEED = 5.0;
-    private static final double ENEMY_WIDTH = 40; // Platzhalter-Breite
-    private static final double ENEMY_HEIGHT = 40; // Platzhalter-Höhe
+    private static double WINDOW_WIDTH;
+    private static double WINDOW_HEIGHT;
+    private static final double PLAYER_WIDTH_RATIO = 60.0 / 800.0;
+    private static final double PLAYER_HEIGHT_RATIO = 30.0 / 600.0;
+    private static final double ENEMY_WIDTH_RATIO = 40.0 / 800.0;
+    private static double PLAYER_WIDTH = 60; // Platzhalter-Breite
+    private static double PLAYER_HEIGHT = 30; // Platzhalter-Höhe
+    private static double PLAYER_SPEED = 5.0;
+    private static double ENEMY_WIDTH = 40; // Platzhalter-Breite
+    private static double ENEMY_HEIGHT = 40; // Platzhalter-Höhe
     private static final int ENEMIES_PER_ROW = 10;
     private static final int ENEMY_ROWS = 4;
-    private static final double ENEMY_SPACING_X = 15;
-    private static final double ENEMY_SPACING_Y = 10;
-    private static final double PROJECTILE_WIDTH = 5;
-    private static final double PROJECTILE_HEIGHT = 15;
-    private static final double PROJECTILE_SPEED = 8.0;
+    private double ENEMY_SPACING_X_RATIO = 15.0 / 800.0;
+    private double ENEMY_SPACING_Y_RATIO = 10.0 / 600.0;
+    private static double ENEMY_SPACING_X = 15;
+    private static double ENEMY_SPACING_Y = 10;
+    private static final double PROJECTILE_WIDTH_RATIO = 5.0 / 800.0;
+    private static final double PROJECTILE_HEIGHT_RATIO = 15.0 / 600.0;
+    private static double PROJECTILE_WIDTH = 5;
+    private static double PROJECTILE_HEIGHT = 15;
+    private static double PROJECTILE_SPEED = 8.0;
     private static final long SHOOT_COOLDOWN_MS = 300; // Millisekunden zwischen Schüssen
     private static final int POINTS_PER_ENEMY = 10;
     // --- Spielzustand ---
@@ -54,22 +64,69 @@ public class Musicalinvaders extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        root = new Pane();
-        root.setPrefSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-        // Optional: Hintergrund setzen (später vielleicht ein Notenblatt?)
-        root.setStyle("-fx-background-color: #1a1a1a;"); // Dunkelgrau
+        // --- Bildschirmauflösung ermitteln ---
+        Screen screen = Screen.getPrimary();
+        Rectangle2D bounds = screen.getVisualBounds(); // Verwende VisualBounds, um Taskleiste etc. zu berücksichtigen
 
-        Scene scene = new Scene(root);
+        // Setze die Fenstergröße auf die volle verfügbare Höhe und eine proportionale Breite,
+        // oder eine feste Breite und volle Höhe, oder volle Breite und volle Höhe.
+        // Beispiel 1: Volle Höhe, proportionale Breite (angenommenes Seitenverhältnis 4:3 für das Spiel)
+         WINDOW_HEIGHT = bounds.getHeight();
+         WINDOW_WIDTH = WINDOW_HEIGHT * (4.0 / 3.0);
+         // Stelle sicher, dass die Breite nicht die Bildschirmbreite überschreitet
+         if (WINDOW_WIDTH > bounds.getWidth()) {
+            WINDOW_WIDTH = bounds.getWidth();
+            WINDOW_HEIGHT = WINDOW_WIDTH * (3.0 / 4.0); // Höhe neu anpassen
+         }
+
+        // Beispiel 2: Volle verfügbare Breite und Höhe (Vollbild-ähnlich, aber nicht exklusiver Vollbildmodus)
+//        WINDOW_WIDTH = bounds.getWidth();
+//        WINDOW_HEIGHT = bounds.getHeight();
+
+        // Beispiel 3: Feste Breite, volle Höhe (wenn die Breite wichtiger ist)
+        // WINDOW_WIDTH = 800; // Oder eine andere feste Breite
+        // WINDOW_HEIGHT = bounds.getHeight();
+
+
+        // --- Dynamische Größen für Spielelemente berechnen ---
+        // Dies ist wichtig, damit dein Spiel auf verschiedenen Auflösungen gut aussieht.
+        PLAYER_WIDTH = WINDOW_WIDTH * PLAYER_WIDTH_RATIO;
+        PLAYER_HEIGHT = WINDOW_HEIGHT * PLAYER_HEIGHT_RATIO;
+        ENEMY_WIDTH = WINDOW_WIDTH * ENEMY_WIDTH_RATIO;
+        ENEMY_HEIGHT = WINDOW_HEIGHT * ENEMY_HEIGHT_RATIO; // Angenommen, du hast auch ENEMY_HEIGHT_RATIO
+        ENEMY_SPACING_X = WINDOW_WIDTH * ENEMY_SPACING_X_RATIO;
+        ENEMY_SPACING_Y = WINDOW_HEIGHT * ENEMY_SPACING_Y_RATIO; // Angenommen, du hast auch ENEMY_SPACING_Y_RATIO
+        PROJECTILE_WIDTH = WINDOW_WIDTH * PROJECTILE_WIDTH_RATIO;
+        PROJECTILE_HEIGHT = WINDOW_HEIGHT * PROJECTILE_HEIGHT_RATIO;
+
+        // Geschwindigkeiten könnten auch angepasst werden, aber das ist optional
+        PLAYER_SPEED = WINDOW_WIDTH * (5.0 / 800.0); // Basisgeschwindigkeit relativ zur ursprünglichen Breite
+        PROJECTILE_SPEED = WINDOW_HEIGHT * (8.0 / 600.0); // Basisgeschwindigkeit relativ zur ursprünglichen Höhe
+
+
+        // --- Restlicher Aufbau ---
+        root = new Pane();
+        // Wichtig: Setze die bevorzugte Größe des Panes auf die dynamische Fenstergröße
+        root.setPrefSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+        root.setStyle("-fx-background-color: #1a1a1a;");
+
+        // Die Scene wird jetzt mit der dynamischen Größe erstellt
+        Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+        // Alternativ, wenn root.setPrefSize() schon gesetzt wurde:
+        // Scene scene = new Scene(root);
 
         setupInput(scene);
         createPlayer();
-        createEnemies();
+        createEnemies(); // Diese Methode muss jetzt die dynamischen Größen verwenden
         createScoreLabel();
         startGameLoop();
 
-        primaryStage.setTitle("Musical Invaders");
+        primaryStage.setTitle("Musical Invaders - Dynamische Auflösung");
         primaryStage.setScene(scene);
-        primaryStage.setResizable(false);
+        // Optional: Vollbild setzen (echter Vollbildmodus)
+        // primaryStage.setFullScreen(true);
+        // primaryStage.setFullScreenExitHint(""); // Optional: Vollbild-Exit-Hinweis ausblenden
+        primaryStage.setResizable(false); // Verhindert, dass der Benutzer die Größe manuell ändert, wenn du nicht auf Größenänderungen reagierst
         primaryStage.show();
     }
 
@@ -312,17 +369,19 @@ public class Musicalinvaders extends Application {
         }
     }
     public void spawnEnemyWave(){
-        if(enemies.isEmpty()){ //Spawns invincible Enemy's
+        int waveCount = 0;
+        if(enemies.isEmpty()){
                    //creates a little pause between the current and next wave of enemies
             PauseTransition pause = new PauseTransition(Duration.seconds(1));
                 pause.setOnFinished(event -> {
+
                     createEnemies();
                 });
             pause.play();
         }
     }
     private void updateScoreLabel(){
-        scoreLabel.get().setText(STR."Score: \{score}");
+        scoreLabel.get().setText("Score: " + score);
     }
 
     // --- Main Methode ---
