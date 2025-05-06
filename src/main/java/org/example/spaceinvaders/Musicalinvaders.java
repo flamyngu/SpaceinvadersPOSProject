@@ -4,6 +4,7 @@ import javafx.animation.AnimationTimer;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
@@ -17,7 +18,6 @@ import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class Musicalinvaders extends Application {
 
@@ -41,7 +41,7 @@ public class Musicalinvaders extends Application {
     // --- Spielzustand ---
     private Pane root;
     private Rectangle player; // Platzhalter für dein Spieler-Design (ImageView)
-    private List<Rectangle> enemies = new ArrayList<>(); // Platzhalter für Gegner-Designs (ImageViews)
+    private List<Enemy> enemies = new ArrayList<Enemy>(); // Platzhalter für Gegner-Designs (ImageViews)
     private List<Rectangle> playerProjectiles = new ArrayList<>();
     private boolean moveLeft = false;
     private boolean moveRight = false;
@@ -113,34 +113,56 @@ public class Musicalinvaders extends Application {
     }
 
     private void createEnemies() {
-        enemies.clear(); // Sicherstellen, dass die Liste leer ist
+        // 1. Vorhandene visuelle Gegner-Nodes aus der Szene entfernen,
+        //    bevor die Logik-Liste geleert wird.
+        for (Enemy oldEnemy : enemies) { // Iteriere über die bestehenden Enemy-Objekte
+            if (oldEnemy.getNode() != null) { // Sicherheitscheck
+                root.getChildren().remove(oldEnemy.getNode());
+            }
+        }
+        enemies.clear(); // Leere die Liste der Enemy-Logik-Objekte
+
+        // Berechnung der Startposition (bleibt gleich)
         double startX = (WINDOW_WIDTH - (ENEMIES_PER_ROW * (ENEMY_WIDTH + ENEMY_SPACING_X) - ENEMY_SPACING_X)) / 2;
         double startY = 50;
 
         for (int row = 0; row < ENEMY_ROWS; row++) {
             for (int col = 0; col < ENEMIES_PER_ROW; col++) {
-                // --- HIER DEINE GEGNER-DESIGNS EINFÜGEN ---
-                // Ersetze Rectangle durch ImageView mit deinem Gegner-Bild
-                // Beispiel: Image enemyImage = new Image("path/to/your/enemy_note.png");
-                //           ImageView enemyView = new ImageView(enemyImage);
-                //           // Setze Position für enemyView
-                //           enemies.add(enemyView); // Wenn Liste Nodes/ImageViews hält
-                //           root.getChildren().add(enemyView);
+                // --- HIER DEIN EIGENTLICHES GEGNER-DESIGN ERSTELLEN (VISUELLE NODE) ---
+                // Ersetze Rectangle durch ImageView mit deinem Gegner-Bild, wenn du soweit bist.
+                // Für jetzt bleiben wir bei Rectangle als Platzhalter für die Node.
 
-                Rectangle enemy = new Rectangle(ENEMY_WIDTH, ENEMY_HEIGHT);
-                // Vielleicht verschiedene Farben für Reihen? Oder alle schwarz wie Noten?
-                enemy.setFill(Color.WHITE); // Platzhalter-Farbe (z.B. wie Notenköpfe)
+                Rectangle enemyShape = new Rectangle(ENEMY_WIDTH, ENEMY_HEIGHT);
+                // TODO: Setze hier dein gewünschtes Design für die enemyShape
+                // z.B. enemyShape.setFill(Color.BLUE); oder lade ein Bild für eine ImageView
 
+                // Gib der enemyShape eine spezifische Farbe für diese Demonstration,
+                // damit du siehst, dass neue Gegner erstellt werden.
+                // Du kannst später komplexere Designs/Bilder verwenden.
+                enemyShape.setFill(Color.rgb( (row * 50) % 255, (col * 30) % 255, 150)); // Beispiel-Farbe
+
+
+                // Positioniere die visuelle Node (enemyShape)
                 double x = startX + col * (ENEMY_WIDTH + ENEMY_SPACING_X);
                 double y = startY + row * (ENEMY_HEIGHT + ENEMY_SPACING_Y);
-                enemy.setX(x);
-                enemy.setY(y);
+                enemyShape.setX(x);
+                enemyShape.setY(y);
 
-                enemies.add(enemy);
-                root.getChildren().add(enemy);
+                // --- Erstelle das Enemy-LOGIK-Objekt ---
+                // Jeder normale Gegner hat hier z.B. 1 Leben und gibt POINTS_PER_ENEMY Punkte.
+                Enemy newLogicalEnemy = new Enemy(enemyShape, 1, POINTS_PER_ENEMY);
+
+                // --- Füge das Logik-Objekt zur enemies-Liste hinzu ---
+                enemies.add(newLogicalEnemy);
+
+                // --- Füge die visuelle Node (enemyShape) zur Szene (root Pane) hinzu ---
+                root.getChildren().add(enemyShape);
             }
         }
+        // Optional: Debug-Ausgabe
+
     }
+
     private void createBossEnemy(){
 
     }
@@ -165,14 +187,15 @@ public class Musicalinvaders extends Application {
                 updateProjectiles();
                 // updateEnemies(); // TODO: Gegnerbewegung hinzufügen (z.B. im Takt?)
                 checkCollisions();
-                if(enemies.isEmpty()){
-                    //creates a little pause between the current and next wave of enemies
-                    PauseTransition pause = new PauseTransition(Duration.seconds(2));
-                    pause.setOnFinished(event -> {
-                        createEnemies();
-                    });
-                    pause.play();
-                }
+//                if(enemies.isEmpty()){ //Spawns invincible Enemy's
+//                    //creates a little pause between the current and next wave of enemies
+//                    PauseTransition pause = new PauseTransition(Duration.seconds(2));
+//                    pause.setOnFinished(event -> {
+//                        createEnemies();
+//                    });
+//                    pause.play();
+//                }
+                spawnEnemyWave();
                 // TODO: Spielende prüfen (alle Gegner besiegt / Gegner erreichen Boden / Spieler getroffen)
             }
         };
@@ -235,19 +258,25 @@ public class Musicalinvaders extends Application {
         Iterator<Rectangle> projIterator = playerProjectiles.iterator();
         while (projIterator.hasNext()) {
             Rectangle projectile = projIterator.next();
-            Iterator<Rectangle> enemyIterator = enemies.iterator();
+            Iterator<Enemy> enemyIterator = enemies.iterator();
             while (enemyIterator.hasNext()) {
-                Rectangle enemy = enemyIterator.next();
+                Enemy enemy = enemyIterator.next();
 
                 // Einfache Bounding-Box Kollision
-                if (projectile.getBoundsInParent().intersects(enemy.getBoundsInParent())) {
+                if (projectile.getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {
                     // Kollision!
                     projIterator.remove(); // Projektil entfernen
-                    enemyIterator.remove(); // Gegner entfernen
+                     // Gegner entfernen
                     root.getChildren().remove(projectile); // Projektil aus Anzeige entfernen
-                    root.getChildren().remove(enemy); // Gegner aus Anzeige entfernen
-                    score += POINTS_PER_ENEMY;
-                    updateScoreLabel();
+                    enemy.takeHit();
+                    if(!enemy.isAlive()){
+                        enemyIterator.remove();
+                        root.getChildren().remove(enemy.getNode());
+                        score+= enemy.getPoints();
+                        updateScoreLabel();
+                    }
+                     // Gegner aus Anzeige entfernen
+
 
                     // TODO: Treffer-Sound/Effekt abspielen (z.B. anderer Ton, Partikeleffekt)
                     // TODO: Score erhöhen
@@ -256,6 +285,40 @@ public class Musicalinvaders extends Application {
                     break;
                 }
             }
+        }
+    }
+    public class Enemy {
+        private Node node;
+        private int health;
+        private int points;
+
+        public Enemy(Node node, int initialHealth, int points) {
+            this.node = node;
+            this.health = initialHealth;
+            this.points = points;
+        }
+
+        public Node getNode() { return node; }
+        public int getHealth() { return health; }
+        public int getPoints() { return points; }
+        public boolean isAlive() { return health > 0; }
+
+        public void takeHit() {
+            if (health > 0) {
+                health--;
+                // Optional: Visuelles Feedback für Treffer hier implementieren
+                // z.B. node.setOpacity(0.5); new PauseTransition(Duration.millis(50)).setOnFinished(e -> node.setOpacity(1.0)).play();
+            }
+        }
+    }
+    public void spawnEnemyWave(){
+        if(enemies.isEmpty()){ //Spawns invincible Enemy's
+                   //creates a little pause between the current and next wave of enemies
+            PauseTransition pause = new PauseTransition(Duration.seconds(1));
+                pause.setOnFinished(event -> {
+                    createEnemies();
+                });
+            pause.play();
         }
     }
     private void updateScoreLabel(){
