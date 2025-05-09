@@ -11,6 +11,8 @@ module org.example.spaceinvaders {
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
     requires annotations;
+    requires javafx.media;
+    requires java.desktop;
 
     opens org.example.spaceinvaders to javafx.fxml;
     exports org.example.spaceinvaders;

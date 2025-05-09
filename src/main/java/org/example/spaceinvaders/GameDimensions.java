@@ -17,7 +17,7 @@ public class GameDimensions {
     public static final int BOSS_POINTS = 250; // Punkte für das Besiegen des Bosses
     public static final double BOSS_WIDTH_MULTIPLIER = 4.5; // Boss ist 4.5x so breit wie ein normaler Gegner
     public static final double BOSS_HEIGHT_MULTIPLIER = 2.0; // Boss ist 2x so hoch wie ein normaler Gegner
-    public static final int WAVE_NUMBER_TO_SPAWN_BOSS = 3;
+    public static final int WAVE_NUMBER_TO_SPAWN_BOSS = 4;
     public static final int SCORE_TO_SPAWN_BOSS_ALTERNATIVE = 1000;
 
     // Dynamisch berechnete Größen (könnten auch public final sein)
