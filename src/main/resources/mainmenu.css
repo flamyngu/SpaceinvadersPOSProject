@@ -1,0 +1,234 @@
+/* mainmenu.css */
+
+@font-face {
+    font-family: 'PixelFont';
+    src: url('./fonts/PressStart2P-Regular.ttf');
+}
+
+.root {
+    -fx-font-family: 'Press Start 2P', 'PixelFont', monospace;
+    -fx-text-fill: white;
+    -fx-font-smoothing-type: gray;
+}
+
+#main-menu-background-container {
+    -fx-background-color: #100520;
+}
+
+#main-menu-layout {
+    -fx-background-color: transparent;
+    -fx-padding: 20px; /* Etwas weniger globales Padding, da Boxen eigenen Rand haben */
+}
+
+/* --- TITEL --- */
+#title-label {
+    -fx-font-size: 32px; /* KLEINER */
+    -fx-text-fill: white;
+    -fx-padding: 0 0 30px 0; /* Unten Abstand */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.75), 2, 0.5, 0, 1);
+}
+
+/* --- ALLGEMEINE SECTION TITEL --- */
+.section-title {
+    -fx-font-size: 18px; /* KLEINER */
+    -fx-text-fill: white;
+    -fx-padding-bottom: 12px; /* Etwas weniger */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.75), 1, 0.5, 0, 1);
+}
+
+/* --- BOXEN (Links: Stimmenauswahl, Rechts: Info) --- */
+#voice-selection-box,
+#info-area {
+    -fx-background-color: transparent !important;
+    -fx-padding: 12px; /* KLEINERES Innenpadding für die Boxen */
+    -fx-border-color: white, white, white, transparent;
+    -fx-border-width: 2px, 2px, 2px, 0px;
+    -fx-border-style: solid;
+    -fx-spacing: 12px; /* KLEINERER Abstand zwischen Elementen in der VBox */
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+}
+
+#voice-selection-box {
+    /* -fx-margin-right wird im Java-Code gesetzt oder kann hier definiert werden,
+       um den Abstand zur Info-Box zu steuern.
+       Wir erhöhen den Standardabstand des BorderPane durch Padding auf der Info-Box-Seite. */
+}
+
+#info-area {
+    -fx-margin-left: 40px; /* GRÖSSERER ABSTAND ZWISCHEN DEN BOXEN */
+}
+
+
+/* --- LISTVIEW UND SCROLLPANE (Stimmenliste) --- */
+#voice-selection-box .scroll-pane {
+    -fx-background: transparent !important;
+    -fx-background-color: transparent !important;
+    -fx-border-color: white!important;
+    -fx-border-width: 2px;
+    -fx-padding: 0px; /* Kein Padding für die ScrollPane selbst */
+}
+#voice-selection-box .scroll-pane .viewport {
+    -fx-background-color: transparent !important;
+}
+
+#voice-list-view {
+    -fx-background-color: transparent !important;
+    -fx-border-color: transparent;
+
+    -fx-padding-right: 10px; /* RECHTES PADDING, UM SCROLLBAR NACH LINKS ZU "DRÜCKEN" */
+    /* Erhöhen, um Scrollbar weiter nach links zu bekommen */
+}
+
+#voice-list-view .list-cell {
+    -fx-background-color: transparent !important;
+    -fx-background-radius: 0 !important;
+    -fx-padding: 4px 0px; /* KLEINERER vertikaler Abstand */
+    -fx-border-color: white white white transparent;
+    -fx-border-width: 1px, 1px, 1px, 0px;
+    -fx-border-style: solid;
+    -fx-margin-bottom: 6px; /* KLEINERER Abstand */
+    -fx-text-fill: white;
+    -fx-border-radius: 0;
+}
+#voice-list-view .list-cell:first-cell {
+    -fx-border-color: transparent white white transparent;
+    -fx-border-width: 0px, 1px, 1px, 0px;
+}
+#voice-list-view .list-cell:last-cell {
+    -fx-border-color: transparent white white transparent;
+    -fx-border-width: 0px, 1px, 1px, 0px;
+}
+
+#voice-list-view .list-cell:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.1) !important;
+}
+#voice-list-view .list-cell:selected {
+    -fx-background-color: rgba(255, 255, 255, 0.20) !important;
+    -fx-border-color: white white white transparent!important;
+}
+
+.voice-list-cell-content { /* HBox in der Zelle */
+    -fx-padding: 4px 6px; /* KLEINERES Innenpadding */
+    -fx-alignment: center-left;
+    -fx-background-color: transparent !important;
+}
+
+.voice-name-label {
+    -fx-font-size: 14px; /* KLEINER */
+    -fx-text-fill: white;
+}
+
+.play-intro-button {
+    -fx-font-family: 'Press Start 2P', 'PixelFont', monospace;
+    -fx-font-size: 14px; /* KLEINER */
+    -fx-text-fill: white;
+    -fx-min-width: 30px; /* Etwas schmaler */
+    -fx-pref-width: 30px;
+    -fx-max-width: 30px;
+    -fx-background-color: transparent !important;
+    -fx-border-color: white;
+    -fx-border-width: 2px;
+    -fx-padding: 3px; /* KLEINER */
+    -fx-alignment: center;
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+}
+.play-intro-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* --- INFO BEREICH --- */
+#info-area .scroll-pane { /* Falls die TextArea eine ScrollPane um sich hat (standardmäßig) */
+    -fx-background-color: transparent !important;
+    -fx-background: transparent !important;
+    -fx-padding: 0px;
+}
+#info-area .scroll-pane .viewport {
+    -fx-background-color: transparent !important;
+}
+
+#info-text-area {
+    -fx-font-family: 'Press Start 2P', 'PixelFont', monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: white;
+    -fx-control-inner-background: transparent !important;
+    -fx-background-color: transparent !important;
+    -fx-border-color: white, white, white, transparent;
+    -fx-border-width: 2px, 2px, 2px, 0px;
+
+    /*-fx-padding: 6px;*/
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+    -fx-highlight-fill: rgba(255, 255, 255, 0.3);
+    -fx-highlight-text-fill: white;
+    /* Damit die TextArea die Höhe in der VBox füllt (VBox.setVgrow im Java-Code ist dafür zuständig) */
+}
+
+/* --- SCROLLBARS --- */
+.scroll-bar {
+    -fx-background-color: transparent;
+    -fx-padding: 0px;
+    -fx-pref-width: 12px; /* Breite der Scrollbar-Spur */
+    -fx-max-width: 12px;
+}
+.scroll-bar:vertical .track,
+.scroll-bar:horizontal .track {
+    -fx-background-color: transparent; /* Track selbst transparent */
+    -fx-border-color: transparent;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+}
+.scroll-bar .thumb { /* Der bewegliche Teil */
+    -fx-background-color: white;
+    -fx-background-radius: 0;
+    -fx-border-color: #555; /* Dunklerer Rand um den Thumb für besseren Kontrast */
+    -fx-border-width: 1px;
+    /* -fx-pref-width: 8px; */ /* Daumenbreite, falls die Spur breiter ist */
+}
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-border-color: white;
+    -fx-border-width: 2px;
+    -fx-padding: 2px;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+    -fx-opacity: 0.7;
+    -fx-pref-height: 12px; /* Höhe der Pfeilbuttons */
+    -fx-pref-width: 12px;  /* Breite der Pfeilbuttons */
+}
+.scroll-bar .increment-button:hover,
+.scroll-bar .decrement-button:hover {
+    -fx-opacity: 1.0;
+}
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: white;
+    -fx-shape: "M -2 -2 L 0 2 L 2 -2 Z"; /* Einfacher Pfeil nach oben, für unten umdrehen */
+    /* Für Pfeil nach unten: "M -2 2 L 0 -2 L 2 2 Z"; */
+    -fx-padding: 3px; /* Größe des Pfeilsymbols */
+    -fx-scale-x: 0.8;
+    -fx-scale-y: 0.8;
+}
+/* Spezifisch für Pfeil nach unten, falls du unterschiedliche Formen brauchst */
+.scroll-bar .decrement-arrow {
+    -fx-shape: "M -2 2 L 0 -2 L 2 2 Z";
+}
+
+/* --- BESTÄTIGUNGSBUTTON --- */
+#confirm-voice-button {
+    -fx-font-size: 16px; /* KLEINER */
+    -fx-text-fill: #100520;
+    -fx-background-color: white;
+    -fx-padding: 8px 18px; /* KLEINER */
+    -fx-border-color: white;
+    -fx-border-width: 2px;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 2, 0.3, 0, 1);
+}
+#confirm-voice-button:hover {
+    -fx-background-color: #E0E0E0;
+    -fx-text-fill: black;
+}

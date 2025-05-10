@@ -4,14 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="kleiner push, aufgeteilt in 8 Datein  am 6.mai.25">
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/VoiceProfile.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/images/outer-space-background.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/sfx/MaxMustermann/intro_MaxMustermann.wav" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/sfx/j.js" afterDir="false" />
+    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="starting page not completed,&#10;fixed the wave problem.&#10;&#10;need to update the starting page look!&#10;am 9.mai.25">
+      <change afterPath="$PROJECT_DIR$/src/main/resources/fonts/Minecraftia-Regular.ttf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/fonts/Pixel Emulator.otf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/fonts/PressStart2P-Regular.ttf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/mainmenu.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/module-info.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/module-info.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -24,24 +22,22 @@
       <list>
         <option value="Class" />
         <option value="JavaScript File" />
+        <option value="CSS File" />
       </list>
     </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory">{
-  &quot;lastFilter&quot;: {
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {}
+}]]></component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/flamyngu/SpaceinvadersPOSProject.git&quot;,
+    &quot;accountId&quot;: &quot;13b00220-d775-4ae1-959c-3943886afd1d&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">
-    <option name="selectedUrlAndAccountId">
-      <UrlAndAccount>
-        <option name="accountId" value="ff5f0135-6aaf-4952-86c9-a5f38fc98f45" />
-        <option name="url" value="https://github.com/flamyngu/SpaceinvadersPOSProject.git" />
-      </UrlAndAccount>
-    </option>
-  </component>
   <component name="MavenImportPreferences">
     <option name="generalSettings">
       <MavenGeneralSettings>
@@ -73,6 +69,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "master",
     "kotlin-language-version-configured": "true",
+    "list.type.of.created.stylesheet": "CSS",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -87,6 +84,7 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\dodo\Documents\GitHub\SpaceinvadersPOSProject\src\main\resources\fonts" />
       <recent name="C:\Users\dodo\Documents\GitHub\SpaceinvadersPOSProject\src\main\resources\images" />
       <recent name="C:\Users\dodo\Documents\GitHub\SpaceinvadersPOSProject\src\main\resources\sfx\MaxMustermann" />
     </key>
@@ -138,6 +136,14 @@
       </list>
     </recent_temporary>
   </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-a94e463ab2e7-intellij.indexing.shared.core-IU-243.26053.27" />
+        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-IU-243.26053.27" />
+      </set>
+    </attachedChunks>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -153,6 +159,7 @@
       <workItem from="1746561588938" duration="9000" />
       <workItem from="1746561694681" duration="5430000" />
       <workItem from="1746598233372" duration="3589000" />
+      <workItem from="1746878206458" duration="9201000" />
     </task>
     <task id="LOCAL-00001" summary="First Logic + Score">
       <option name="closed" value="true" />
@@ -186,7 +193,15 @@
       <option name="project" value="LOCAL" />
       <updated>1746563448546</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="starting page not completed,&#10;fixed the wave problem.&#10;&#10;need to update the starting page look!&#10;am 9.mai.25">
+      <option name="closed" value="true" />
+      <created>1746816827757</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1746816827757</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -197,6 +212,7 @@
     <MESSAGE value="2 Sec timeout  am 6.mai.25" />
     <MESSAGE value="kleiner push für automatisch anpassbare primaryStage (Bildschirm auflösung)  am 6.mai.25" />
     <MESSAGE value="kleiner push, aufgeteilt in 8 Datein  am 6.mai.25" />
-    <option name="LAST_COMMIT_MESSAGE" value="kleiner push, aufgeteilt in 8 Datein  am 6.mai.25" />
+    <MESSAGE value="starting page not completed,&#10;fixed the wave problem.&#10;&#10;need to update the starting page look!&#10;am 9.mai.25" />
+    <option name="LAST_COMMIT_MESSAGE" value="starting page not completed,&#10;fixed the wave problem.&#10;&#10;need to update the starting page look!&#10;am 9.mai.25" />
   </component>
 </project>
