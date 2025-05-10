@@ -4,14 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="starting page not completed,&#10;fixed the wave problem.&#10;&#10;need to update the starting page look!&#10;am 9.mai.25">
-      <change afterPath="$PROJECT_DIR$/src/main/resources/fonts/Minecraftia-Regular.ttf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/fonts/Pixel Emulator.otf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/fonts/PressStart2P-Regular.ttf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/mainmenu.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" afterDir="false" />
-    </list>
+    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="Starting Page Complited, css finally done. &#10;look at tree for file struncture&#10;&#10;need to update the starting page look!&#10;am 9.mai.25" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -159,7 +152,7 @@
       <workItem from="1746561588938" duration="9000" />
       <workItem from="1746561694681" duration="5430000" />
       <workItem from="1746598233372" duration="3589000" />
-      <workItem from="1746878206458" duration="9201000" />
+      <workItem from="1746878206458" duration="9510000" />
     </task>
     <task id="LOCAL-00001" summary="First Logic + Score">
       <option name="closed" value="true" />
@@ -201,7 +194,15 @@
       <option name="project" value="LOCAL" />
       <updated>1746816827757</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Starting Page Complited, css finally done. &#10;look at tree for file struncture&#10;&#10;need to update the starting page look!&#10;am 9.mai.25">
+      <option name="closed" value="true" />
+      <created>1746887784998</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1746887784998</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -213,6 +214,7 @@
     <MESSAGE value="kleiner push für automatisch anpassbare primaryStage (Bildschirm auflösung)  am 6.mai.25" />
     <MESSAGE value="kleiner push, aufgeteilt in 8 Datein  am 6.mai.25" />
     <MESSAGE value="starting page not completed,&#10;fixed the wave problem.&#10;&#10;need to update the starting page look!&#10;am 9.mai.25" />
-    <option name="LAST_COMMIT_MESSAGE" value="starting page not completed,&#10;fixed the wave problem.&#10;&#10;need to update the starting page look!&#10;am 9.mai.25" />
+    <MESSAGE value="Starting Page Complited, css finally done. &#10;look at tree for file struncture&#10;&#10;need to update the starting page look!&#10;am 9.mai.25" />
+    <option name="LAST_COMMIT_MESSAGE" value="Starting Page Complited, css finally done. &#10;look at tree for file struncture&#10;&#10;need to update the starting page look!&#10;am 9.mai.25" />
   </component>
 </project>
