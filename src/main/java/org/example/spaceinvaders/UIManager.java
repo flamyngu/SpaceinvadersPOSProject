@@ -16,13 +16,15 @@ public class UIManager {
     private Pane uiPane;
     private GameDimensions gameDimensions;
     private Label waveMessageLabel;
+    private MusicalInvaders mainApp;
     private SimpleObjectProperty<Label> scoreLabelProperty = new SimpleObjectProperty<>(); // Beibehalten
     private int currentScore = 0;
 
 
-    public UIManager(Pane uiPane, GameDimensions gameDimensions) {
+    public UIManager(Pane uiPane, GameDimensions gameDimensions, MusicalInvaders mainApp) {
         this.uiPane = uiPane;
         this.gameDimensions = gameDimensions;
+        this.mainApp = mainApp;
         createWaveMessageLabel();
     }
 
@@ -102,6 +104,10 @@ public class UIManager {
 
     public void addScore(int points) {
         this.currentScore += points;
+        updateScoreDisplay();
+    }
+    public void resetScore() {
+        this.currentScore = 0;
         updateScoreDisplay();
     }
 

@@ -166,12 +166,45 @@ public class GameEntityManager {
         }
         this.bossActive = false;
         this.bossEnemy = null;
-        setBossAlreadySpawneThisCycle(true);
+        setBossAlreadySpawnedThisCycle(true);
+        System.out.println("Boss defeated roll credits");
         bossWasJustDefeated = true;
         isLoadingNextWave = false;
     }
-    public void setBossAlreadySpawneThisCycle(boolean status){
+    public void setBossAlreadySpawnedThisCycle(boolean status){
         this.bossHasSpawnedThisGameCycle = status;
+    }
+    public void resetGame(){
+        for(Enemy enemy : new ArrayList<>(enemies)) {
+            if(enemy.getNode()!=null)gamePane.getChildren().remove(enemy.getNode());
+        }
+        enemies.clear();
+        for(Rectangle projectile : new ArrayList<>(playerProjectiles)){
+            if(projectile!=null)gamePane.getChildren().remove(projectile);
+        }
+        playerProjectiles.clear();
+        if(bossEnemy!=null &&bossEnemy.getNode()!=null){
+            gamePane.getChildren().remove(bossEnemy.getNode());
+        }
+        bossEnemy  = null;
+        bossActive = false;
+        bossWasJustDefeated = false;
+        bossHasSpawnedThisGameCycle = false;
+
+        currentWaveNumber = 0;
+        isLoadingNextWave = false;
+        if(player != null && player.getNode() != null)gamePane.getChildren().remove(player.getNode());
+        player = null;
+    }
+    public void removeProjectile(Node projectileNode) {
+        if (projectileNode != null) {
+            gamePane.getChildren().remove(projectileNode);
+        }
+    }
+    public void removeEnemyNode(Node enemyNode) {
+        if(enemyNode != null){
+            gamePane.getChildren().remove(enemyNode);
+        }
     }
 
 
@@ -181,5 +214,8 @@ public class GameEntityManager {
     public List<Enemy> getEnemies() { return enemies; }
     public List<Rectangle> getPlayerProjectiles() { return playerProjectiles; }
     public boolean isBossActive() { return bossActive; }
+
+    public boolean isLoadingNextWave() {return isLoadingNextWave;}
+
     public Enemy getBossEnemy() { return bossEnemy;}
 }

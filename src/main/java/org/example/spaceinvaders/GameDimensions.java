@@ -14,13 +14,13 @@ public class GameDimensions {
     public static final double PROJECTILE_WIDTH_RATIO = 5.0 / 800.0;
     public static final double PROJECTILE_HEIGHT_RATIO = 15.0 / 600.0;
     public static final int BOSS_HEALTH = 10;
-    public static final int BOSS_POINTS = 250; // Punkte für das Besiegen des Bosses
-    public static final double BOSS_WIDTH_MULTIPLIER = 4.5; // Boss ist 4.5x so breit wie ein normaler Gegner
-    public static final double BOSS_HEIGHT_MULTIPLIER = 2.0; // Boss ist 2x so hoch wie ein normaler Gegner
-    public static final int WAVE_NUMBER_TO_SPAWN_BOSS = 4;
+    public static final int BOSS_POINTS = 250;
+    public static final double BOSS_WIDTH_MULTIPLIER = 4.5;
+    public static final double BOSS_HEIGHT_MULTIPLIER = 2.0;
+    public static final int WAVE_NUMBER_TO_SPAWN_BOSS = 2;
     public static final int SCORE_TO_SPAWN_BOSS_ALTERNATIVE = 1000;
 
-    // Dynamisch berechnete Größen (könnten auch public final sein)
+    // Dynamisch berechnete Größen
     private final double playerWidth;
     private final double playerHeight;
     private final double enemyWidth;
@@ -29,15 +29,13 @@ public class GameDimensions {
     private final double enemySpacingY;
     private final double projectileWidth;
     private final double projectileHeight;
-
-    // Geschwindigkeiten könnten auch hier sein
     private final double playerSpeedBase;
     private final double projectileSpeedBase;
 
 
     public GameDimensions(double windowWidth, double windowHeight) {
-        this.width = windowWidth;
-        this.height = windowHeight;
+        this.width = windowWidth-10;
+        this.height = windowHeight-10;
 
         this.playerWidth = windowWidth * PLAYER_WIDTH_RATIO;
         this.playerHeight = windowHeight * PLAYER_HEIGHT_RATIO;
@@ -50,6 +48,7 @@ public class GameDimensions {
 
         this.playerSpeedBase = windowWidth * (5.0 / 800.0);
         this.projectileSpeedBase = windowHeight * (8.0 / 600.0);
+
     }
 
     // Getter
