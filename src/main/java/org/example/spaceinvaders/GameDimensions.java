@@ -17,7 +17,7 @@ public class GameDimensions {
     public static final int BOSS_POINTS = 250;
     public static final double BOSS_WIDTH_MULTIPLIER = 4.5;
     public static final double BOSS_HEIGHT_MULTIPLIER = 2.0;
-    public static final int WAVE_NUMBER_TO_SPAWN_BOSS = 2;
+    public static final int WAVE_NUMBER_TO_SPAWN_BOSS = 4;
     public static final int SCORE_TO_SPAWN_BOSS_ALTERNATIVE = 1000;
 
     // Dynamisch berechnete Größen

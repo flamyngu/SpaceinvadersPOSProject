@@ -515,6 +515,10 @@ public class MusicalInvaders extends Application {
 
         // Root-Pane für die Spielszene (wichtig für Overlays)
         gameRootPane = new StackPane(gamePane, uiPane);
+        // In MusicalInvaders.initializeGame(), nachdem gamePane dem gameRootPane hinzugefügt wurde:
+        System.out.println("GamePane in Scene - LayoutX: " + gamePane.getLayoutX() + ", LayoutY: " + gamePane.getLayoutY());
+        System.out.println("GamePane in Scene - TranslateX: " + gamePane.getTranslateX() + ", TranslateY: " + gamePane.getTranslateY());
+        System.out.println("GamePane Bounds in Parent (gameRootPane): " + gamePane.getBoundsInParent());
         // Füge Overlay-Panes hinzu (werden durch changeGameState sichtbar/unsichtbar)
         if (!gameRootPane.getChildren().contains(pauseMenuPane)) gameRootPane.getChildren().add(pauseMenuPane);
         if (!gameRootPane.getChildren().contains(gameOverMenuPane)) gameRootPane.getChildren().add(gameOverMenuPane);
@@ -557,6 +561,11 @@ public class MusicalInvaders extends Application {
                 }
             };
         }
+        // In MusicalInvaders.initializeGame(), nachdem gamePane erstellt wurde:
+        System.out.println("GamePane Bounds in Parent: " + gamePane.getBoundsInParent());
+        System.out.println("GamePane Layout Bounds: " + gamePane.getLayoutBounds());
+        System.out.println("GamePane Breite/Höhe: " + gamePane.getWidth() + "/" + gamePane.getHeight()); // Ist oft 0 bis zum ersten Layout-Pass
+        System.out.println("GamePane Pref Breite/Höhe: " + gamePane.getPrefWidth() + "/" + gamePane.getPrefHeight());
     }
 
     // Wird vom GameUpdater aufgerufen
@@ -566,6 +575,10 @@ public class MusicalInvaders extends Application {
 
     public VoiceProfile getSelectedVoiceProfile() {
         return selectedVoiceProfile;
+    }
+
+    public GameState getCurrentGameState(){
+        return this.currentGameState;
     }
 
     private void playIntro(VoiceProfile profile) {

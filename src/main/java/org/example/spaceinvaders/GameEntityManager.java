@@ -13,7 +13,8 @@ import java.util.List;
 public class GameEntityManager {
     private Pane gamePane;
     private GameDimensions gameDimensions;
-    private UIManager uiManager;// Für Score-Updates bei Bedarf
+    private UIManager uiManager;
+    private BossController bossController; // Hinzugefügt
 
     private Enemy bossEnemy = null;
     private boolean bossActive = false;
@@ -21,15 +22,26 @@ public class GameEntityManager {
     private boolean isLoadingNextWave = false;
     private boolean bossHasSpawnedThisGameCycle = false;
     private boolean bossWasJustDefeated = false;
+    private double enemyMovementDirection = 1.0;
+    private double enemyGroupSpeedX;
+    private double enemyGroupSpeedY;
+    private boolean moveDownNextCycle = false;
 
     private Player player;
     private List<Enemy> enemies = new ArrayList<>();
-    private List<Rectangle> playerProjectiles = new ArrayList<>(); // Vorerst Rectangles
+    private List<Rectangle> playerProjectiles = new ArrayList<>();
 
     public GameEntityManager(Pane gamePane, GameDimensions gameDimensions, UIManager uiManager) {
         this.gamePane = gamePane;
         this.gameDimensions = gameDimensions;
         this.uiManager = uiManager;
+
+        this.enemyGroupSpeedX = this.gameDimensions.getWidth() * 0.002;
+        if(this.enemyGroupSpeedX < 1.0) this.enemyGroupSpeedX = 1.0;
+        this.enemyGroupSpeedY = this.gameDimensions.getEnemyHeight() * 0.5;
+
+        // BossController initialisieren
+        this.bossController = new BossController(this, gameDimensions, uiManager);
     }
 
     public void createPlayer() {
@@ -38,7 +50,7 @@ public class GameEntityManager {
     }
 
     public void createEnemies() {
-        if(bossActive){isLoadingNextWave = false;return;};
+        if(bossActive){isLoadingNextWave = false;return;}
         // Alte Gegner-Nodes entfernen
         for (Enemy oldEnemy : enemies) {
             if (oldEnemy.getNode() != null) {
@@ -48,17 +60,18 @@ public class GameEntityManager {
         enemies.clear();
 
         double startX = (gameDimensions.getWidth() - (GameDimensions.ENEMIES_PER_ROW * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX()) - gameDimensions.getEnemySpacingX())) / 2;
-        double startY = gameDimensions.getHeight() * (50.0 / 600.0); // Relativer StartY
+        double startY = gameDimensions.getHeight() * (50.0 / 600.0);
 
         for (int row = 0; row < GameDimensions.ENEMY_ROWS; row++) {
             for (int col = 0; col < GameDimensions.ENEMIES_PER_ROW; col++) {
                 Rectangle enemyShape = new Rectangle(gameDimensions.getEnemyWidth(), gameDimensions.getEnemyHeight());
-                enemyShape.setFill(Color.rgb((row * 60) % 255, (col * 40) % 255, 180)); // Etwas andere Farben
+                enemyShape.setFill(Color.rgb((row * 60) % 255, (col * 40) % 255, 180));
 
                 double x = startX + col * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX());
                 double y = startY + row * (gameDimensions.getEnemyHeight() + gameDimensions.getEnemySpacingY());
-                enemyShape.setX(x);
-                enemyShape.setY(y);
+
+                enemyShape.setLayoutX(x);
+                enemyShape.setLayoutY(y);
 
                 Enemy newLogicalEnemy = new Enemy(enemyShape, 1, GameDimensions.POINTS_PER_ENEMY);
                 enemies.add(newLogicalEnemy);
@@ -74,14 +87,14 @@ public class GameEntityManager {
         Rectangle projectile = new Rectangle(gameDimensions.getProjectileWidth(), gameDimensions.getProjectileHeight());
         projectile.setFill(Color.YELLOW);
         projectile.setX(player.getX() + player.getWidth() / 2 - gameDimensions.getProjectileWidth() / 2);
-        projectile.setY(player.getY() - gameDimensions.getProjectileHeight()); // Direkt über dem Spieler
+        projectile.setY(player.getY() - gameDimensions.getProjectileHeight());
 
         playerProjectiles.add(projectile);
         gamePane.getChildren().add(projectile);
     }
 
     public void createBoss() {
-        if(bossActive){isLoadingNextWave = false; return;}; //Boss ist bereits vorhanden
+        if(bossActive){isLoadingNextWave = false; return;};
         //Alte Gegner aus dem Array werfen
         for(Enemy oldEnemy : new ArrayList<>(enemies)) {
             gamePane.getChildren().remove(oldEnemy.getNode());
@@ -94,13 +107,17 @@ public class GameEntityManager {
 
         Rectangle bossShape = new Rectangle(bossWidth, bossHeight);
         bossShape.setFill(Color.DARKRED);
-        bossShape.setX(gameDimensions.getWidth()/2 - bossWidth/2);
-        bossShape.setY(gameDimensions.getHeight()*0.1);
+        bossShape.setLayoutX(gameDimensions.getWidth()/2 - bossWidth/2);
+        bossShape.setLayoutY(gameDimensions.getHeight()*0.1);
 
         this.bossEnemy = new Enemy(bossShape,GameDimensions.BOSS_HEALTH, GameDimensions.BOSS_POINTS);
         this.bossActive = true;
         gamePane.getChildren().add(bossShape);
         uiManager.showBossSpawnMessage();
+
+        // Boss-Controller initialisieren
+        bossController.initializeBoss();
+
         isLoadingNextWave = false;
     }
 
@@ -108,7 +125,7 @@ public class GameEntityManager {
         if (enemies.isEmpty() && !bossActive && !isLoadingNextWave) {
             isLoadingNextWave = true;
             currentWaveNumber = 1;
-            createEnemies(); // Erste Welle sofort
+            createEnemies();
             uiManager.showWaveStartMessage(currentWaveNumber);
         }
     }
@@ -127,7 +144,7 @@ public class GameEntityManager {
         if(spawnBossNow){
             PauseTransition bossPause = new PauseTransition(Duration.seconds(2));
             bossPause.setOnFinished(event -> {
-                bossHasSpawnedThisGameCycle = true; //could cause problems
+                bossHasSpawnedThisGameCycle = true;
                 createBoss();
             });
             bossPause.play();
@@ -145,18 +162,15 @@ public class GameEntityManager {
         return currentWaveNumber;
     }
 
-    // Methoden zum Entfernen (werden vom GameUpdater aufgerufen nach Kollision)
     public void removeEnemy(Enemy enemy) {
         if (enemy != null) {
             gamePane.getChildren().remove(enemy.getNode());
-            // enemies.remove(enemy); // Das Entfernen aus der Liste passiert im Iterator im GameUpdater
         }
     }
 
     public void removeProjectileNode(Node projectileNode) {
         if (projectileNode != null) {
             gamePane.getChildren().remove(projectileNode);
-            // playerProjectiles.remove(projectileNode); // Das Entfernen aus der Liste passiert im Iterator im GameUpdater
         }
     }
 
@@ -170,10 +184,15 @@ public class GameEntityManager {
         System.out.println("Boss defeated roll credits");
         bossWasJustDefeated = true;
         isLoadingNextWave = false;
+
+        // Boss-Controller zurücksetzen
+        bossController.resetBoss();
     }
+
     public void setBossAlreadySpawnedThisCycle(boolean status){
         this.bossHasSpawnedThisGameCycle = status;
     }
+
     public void resetGame(){
         for(Enemy enemy : new ArrayList<>(enemies)) {
             if(enemy.getNode()!=null)gamePane.getChildren().remove(enemy.getNode());
@@ -195,18 +214,34 @@ public class GameEntityManager {
         isLoadingNextWave = false;
         if(player != null && player.getNode() != null)gamePane.getChildren().remove(player.getNode());
         player = null;
+        this.enemyMovementDirection = 1.0;
+        this.moveDownNextCycle = false;
+
+        // Boss-Controller zurücksetzen
+        bossController.resetBoss();
     }
+
     public void removeProjectile(Node projectileNode) {
         if (projectileNode != null) {
             gamePane.getChildren().remove(projectileNode);
         }
     }
+
     public void removeEnemyNode(Node enemyNode) {
         if(enemyNode != null){
             gamePane.getChildren().remove(enemyNode);
         }
     }
 
+    // Neue Methode für Boss-Health-Reset
+    public void resetBossHealth(int newHealth) {
+        if (bossEnemy != null) {
+            // Da Enemy-Health private ist, erstellen wir einen neuen Boss mit derselben Node
+            Rectangle bossShape = (Rectangle) bossEnemy.getNode();
+            Enemy newBoss = new Enemy(bossShape, newHealth, bossEnemy.getPoints());
+            this.bossEnemy = newBoss;
+        }
+    }
 
     // Getter
     public Player getPlayer() { return player; }
@@ -214,8 +249,14 @@ public class GameEntityManager {
     public List<Enemy> getEnemies() { return enemies; }
     public List<Rectangle> getPlayerProjectiles() { return playerProjectiles; }
     public boolean isBossActive() { return bossActive; }
-
     public boolean isLoadingNextWave() {return isLoadingNextWave;}
-
     public Enemy getBossEnemy() { return bossEnemy;}
+    public double getEnemyMovementDirection(){return enemyMovementDirection;}
+    public void setEnemyMovementDirection(double direction){this.enemyMovementDirection = direction;}
+    public double getEnemyGroupSpeedX(){return enemyGroupSpeedX;}
+    public double getEnemyGroupSpeedY() {return enemyGroupSpeedY;}
+    public boolean shouldMoveDownNextCycle(){return moveDownNextCycle;}
+    public void setMoveDownNextCycle(boolean moveDown){moveDownNextCycle = moveDown;}
+    public BossController getBossController() { return bossController; } // Hinzugefügt
+    public Pane getGamePane() { return gamePane; } // Hinzugefügt
 }
