@@ -1,8 +1,11 @@
 package org.example.spaceinvaders;
 
+import javafx.animation.PauseTransition;
 import javafx.scene.Node;
 import javafx.scene.media.AudioClip;
 import javafx.scene.shape.Rectangle;
+import javafx.util.Duration;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -16,12 +19,15 @@ public class GameUpdater {
     private VoiceProfile activeVoiceProfile;
     private long lastShotTime = 0;
 
-    // Für erweiterte Bewegungsmuster
-    private double waveTime = 0; // Zeit für Wellenbewegung
-    private long lastEnemyMoveTime = 0; // Für stepped movement in Wave 2
-    private int wave2StepCount = 0; // Zähler für Schritte in Wave 2
-    private boolean wave3FormationMoving = false; // Für Formation movement in Wave 3
-    private long lastFormationMoveTime = 0;
+    private double waveTime = 0; // For wave-specific time-based patterns
+    private long lastEnemyMoveTimeWave2 = 0;
+    private int lastProcessedWaveForTimeReset = 0; // To reset waveTime only once per wave
+
+    // Store initial positions for Wave 3 (Formation Movement)
+    private List<Double> wave3InitialX = new ArrayList<>();
+    private List<Double> wave3InitialY = new ArrayList<>();
+    private boolean wave3Initialized = false;
+
 
     public GameUpdater(GameEntityManager entityManager, InputHandler inputHandler,
                        GameDimensions gameDimensions, UIManager uiManager, MusicalInvaders mainApp) {
@@ -41,14 +47,27 @@ public class GameUpdater {
         updatePlayer(now);
         handlePlayerShooting(now);
         updateProjectiles();
-        updateEnemyMovement(deltaTime, now);
-        checkCollisions();
 
-        if (entityManager.getEnemies().isEmpty() && !entityManager.isBossActive()) {
-            if (entityManager.bossAlreadySpawnedThisCycle() && entityManager.getBossEnemy() == null) {
-                mainApp.changeGameState(GameState.CREDITS);
-            } else if (!entityManager.isLoadingNextWave()) {
-                entityManager.spawnNextWaveOrBoss();
+        BossController bossController = entityManager.getBossController();
+
+        if (entityManager.isBossActive() && bossController != null) {
+            wave3Initialized = false; // Reset wave 3 init if boss becomes active
+            bossController.updateBossMovement(now, deltaTime);
+        } else if (!entityManager.getEnemies().isEmpty()) {
+            updateEnemyMovement(deltaTime, now);
+        } else if (entityManager.getEnemies().isEmpty() && !entityManager.isBossActive() && !entityManager.isLoadingNextWave() && !entityManager.wasBossJustDefeated()) {
+            wave3Initialized = false; // Reset before spawning next wave
+            entityManager.spawnNextWaveOrBoss();
+        }
+
+        checkCollisions(now);
+
+        if (entityManager.wasBossJustDefeated() && entityManager.getBossEnemy() == null) {
+            if (mainApp.getCurrentGameState() == GameState.PLAYING) {
+                uiManager.showBossDefeatedMessage();
+                PauseTransition delay = new PauseTransition(Duration.seconds(3));
+                delay.setOnFinished(event -> mainApp.changeGameState(GameState.CREDITS));
+                delay.play();
             }
         }
     }
@@ -57,11 +76,11 @@ public class GameUpdater {
         Player player = entityManager.getPlayer();
         if (player == null) return;
         double dx = 0;
-        if (inputHandler.isMoveLeftPressed()) dx -= gameDimensions.getPlayerSpeed();
-        if (inputHandler.isMoveRightPressed()) dx += gameDimensions.getPlayerSpeed();
+        double effectiveSpeed = gameDimensions.getPlayerSpeed();
+        if (inputHandler.isMoveLeftPressed()) dx -= effectiveSpeed;
+        if (inputHandler.isMoveRightPressed()) dx += effectiveSpeed;
         player.move(dx);
     }
-
     private void handlePlayerShooting(long now) {
         if (entityManager.getPlayer() == null) return;
         if (inputHandler.isShootingPressed() && (now - lastShotTime) / 1_000_000 >= GameDimensions.SHOOT_COOLDOWN_MS) {
@@ -70,7 +89,6 @@ public class GameUpdater {
             playSoundEffect("player_shoot.wav");
         }
     }
-
     private void updateProjectiles() {
         Iterator<Rectangle> iterator = entityManager.getPlayerProjectiles().iterator();
         while (iterator.hasNext()) {
@@ -84,169 +102,120 @@ public class GameUpdater {
     }
 
     private void updateEnemyMovement(double deltaTime, long now) {
-        if (entityManager.isBossActive() || entityManager.getEnemies().isEmpty()) {
-            return;
-        }
+        if (entityManager.isBossActive() || entityManager.getEnemies().isEmpty()) return;
 
         int currentWave = entityManager.getCurrentWaveNumber();
 
-        // Wähle Bewegungsmuster basierend auf der Welle
-        switch (currentWave) {
+        if (currentWave != lastProcessedWaveForTimeReset) {
+            waveTime = 0;
+            lastProcessedWaveForTimeReset = currentWave;
+            wave3Initialized = false; // Reset for new wave
+            System.out.println("GameUpdater: Resetting waveTime and wave3Initialized for new wave: " + currentWave);
+        }
+
+        switch (currentWave % 3) {
             case 1:
                 updateBasicMovement(deltaTime);
                 break;
             case 2:
                 updateAcceleratingMovement(deltaTime, now);
                 break;
-            case 3:
+            case 0:
             default:
                 updateFormationMovement(deltaTime, now);
                 break;
         }
     }
 
-    // WELLE 1: Grundlegendes Bewegungsmuster (dein ursprüngliches)
     private void updateBasicMovement(double deltaTime) {
-        List<Enemy> currentEnemies = entityManager.getEnemies();
+        List<Enemy> currentEnemies = entityManager.getEnemies(); if (currentEnemies.isEmpty()) return;
         double currentDirection = entityManager.getEnemyMovementDirection();
-        double speedX = entityManager.getEnemyGroupSpeedX();
-        double speedY = entityManager.getEnemyGroupSpeedY();
-        boolean reverseDirection = false;
-
-        final double EFFECTIVE_LEFT_WALL = 3.5;
-        final double EFFECTIVE_RIGHT_WALL = 1240.0;
-
-        double minEnemyXThisFrame = Double.MAX_VALUE;
-        double maxEnemyXThisFrame = Double.MIN_VALUE;
-
-        if (currentEnemies.isEmpty()) return;
-
-        // Finde die äußersten Kanten der Gegnergruppe
-        for (Enemy enemy : currentEnemies) {
-            Node enemyNode = enemy.getNode();
-            if (enemyNode == null) continue;
-            minEnemyXThisFrame = Math.min(minEnemyXThisFrame, enemyNode.getLayoutX());
-            maxEnemyXThisFrame = Math.max(maxEnemyXThisFrame, enemyNode.getLayoutX() + enemyNode.getBoundsInLocal().getWidth());
+        double effectiveSpeedX = entityManager.getEnemyGroupSpeedX(); double effectiveSpeedY = entityManager.getEnemyGroupSpeedY();
+        boolean reverseDirectionAndMoveDown = false; double groupLeftMost = Double.MAX_VALUE; double groupRightMost = Double.MIN_VALUE;
+        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;
+            groupLeftMost = Math.min(groupLeftMost, enemyNode.getLayoutX());
+            groupRightMost = Math.max(groupRightMost, enemyNode.getLayoutX() + enemyNode.getBoundsInLocal().getWidth());
+        }
+        if (currentDirection > 0 && groupRightMost + effectiveSpeedX * deltaTime * 60 > gameDimensions.getWidth()) { // Apply deltaTime
+            reverseDirectionAndMoveDown = true;
+        } else if (currentDirection < 0 && groupLeftMost + effectiveSpeedX * currentDirection * deltaTime * 60 < 0) { // Apply deltaTime and direction
+            reverseDirectionAndMoveDown = true;
         }
 
-        double potentialNextMinGroupX = minEnemyXThisFrame + (speedX * currentDirection);
-        double potentialNextMaxGroupX = maxEnemyXThisFrame + (speedX * currentDirection);
-        double actualDx = speedX * currentDirection;
+        double dx = effectiveSpeedX * currentDirection * deltaTime * 60; // Apply deltaTime
+        double dy = 0;
 
-        // Wandkollision prüfen
-        if (currentDirection > 0) {
-            if (potentialNextMaxGroupX > EFFECTIVE_RIGHT_WALL) {
-                double overshoot = potentialNextMaxGroupX - EFFECTIVE_RIGHT_WALL;
-                actualDx -= overshoot;
-                reverseDirection = true;
-            }
-        } else {
-            if (potentialNextMinGroupX < EFFECTIVE_LEFT_WALL) {
-                double undershoot = EFFECTIVE_LEFT_WALL - potentialNextMinGroupX;
-                actualDx += undershoot;
-                reverseDirection = true;
-            }
-        }
-
-        double actualDy = 0;
-        if (reverseDirection) {
-            actualDy = speedY;
+        if (reverseDirectionAndMoveDown) {
             entityManager.setEnemyMovementDirection(currentDirection * -1);
+            dx = 0; // No horizontal movement on the turn frame
+            dy = effectiveSpeedY * deltaTime * 60; // Apply deltaTime
         }
 
-        // Alle Gegner bewegen
-        for (Enemy enemy : currentEnemies) {
-            Node enemyNode = enemy.getNode();
-            if (enemyNode == null) continue;
-
-            enemyNode.setLayoutX(enemyNode.getLayoutX() + actualDx);
-            enemyNode.setLayoutY(enemyNode.getLayoutY() + actualDy);
-
-            // Game Over Prüfung
-            if (enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight() >=
-                    gameDimensions.getHeight() - (gameDimensions.getPlayerHeight() * 0.8)) {
-                mainApp.triggerGameOver();
+        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;
+            enemyNode.setLayoutX(enemyNode.getLayoutX() + dx);
+            enemyNode.setLayoutY(enemyNode.getLayoutY() + dy);
+            if (enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight() >= gameDimensions.getHeight() - (gameDimensions.getPlayerHeight() * 0.8)) {
+                if (mainApp.getCurrentGameState() == GameState.PLAYING) mainApp.triggerGameOver();
                 return;
             }
         }
     }
-
-    // WELLE 2: Beschleunigende Space Invaders Bewegung (wird schneller, je weniger Gegner übrig sind)
     private void updateAcceleratingMovement(double deltaTime, long now) {
-        List<Enemy> currentEnemies = entityManager.getEnemies();
-        if (currentEnemies.isEmpty()) return;
-
-        // Geschwindigkeit basierend auf verbleibenden Gegnern - weniger Gegner = schneller
-        int totalEnemies = GameDimensions.ENEMIES_PER_ROW * GameDimensions.ENEMY_ROWS;
+        List<Enemy> currentEnemies = entityManager.getEnemies(); if (currentEnemies.isEmpty()) return;
+        int totalEnemiesAtStart = GameDimensions.ENEMIES_PER_ROW * GameDimensions.ENEMY_ROWS;
         int remainingEnemies = currentEnemies.size();
-        double speedMultiplier = (double) totalEnemies / remainingEnemies; // Je weniger übrig, desto schneller
-        speedMultiplier = Math.min(speedMultiplier, 4.0); // Maximal 4x so schnell
+        double speedMultiplier =(double) totalEnemiesAtStart /remainingEnemies;
+        speedMultiplier = Math.min(speedMultiplier, 4.0); // Cap speed multiplier
 
-        // Stepped movement wie im Original Space Invaders - bewege alle 200-800ms je nach Geschwindigkeit
-        long stepInterval = (long) (600_000_000 / speedMultiplier); // In Nanosekunden, wird schneller
+        // The step interval should be dependent on deltaTime to ensure smooth movement across different frame rates
+        // However, this pattern is inherently step-based. We keep the stepIntervalNanos for the "tick"
+        // but apply movement more smoothly if possible, or just use the tick.
+        // For simplicity, let's keep it tick-based for now as it was.
+        long stepIntervalNanos = (long) (600_000_000 / speedMultiplier);
 
-        if (now - lastEnemyMoveTime < stepInterval) {
-            return; // Noch nicht Zeit für den nächsten Schritt
-        }
-
-        lastEnemyMoveTime = now;
-        wave2StepCount++;
+        if (now - lastEnemyMoveTimeWave2 < stepIntervalNanos) return;
+        lastEnemyMoveTimeWave2 = now;
 
         double currentDirection = entityManager.getEnemyMovementDirection();
+        // Step sizes are fixed per "tick"
         double stepSizeX = entityManager.getEnemyGroupSpeedX() * 8 * speedMultiplier; // Größere Schritte
         double stepSizeY = entityManager.getEnemyGroupSpeedY() * 1.5;
-        boolean reverseDirection = false;
 
-        final double EFFECTIVE_LEFT_WALL = 3.5;
-        final double EFFECTIVE_RIGHT_WALL = gameDimensions.getWidth() - 50;
+        boolean reverseDirectionAndMoveDown = false;
+        double groupLeftMost = Double.MAX_VALUE;
+        double groupRightMost = Double.MIN_VALUE;
 
-        // Finde die äußersten Kanten
-        double minEnemyX = Double.MAX_VALUE;
-        double maxEnemyX = Double.MIN_VALUE;
-
-        for (Enemy enemy : currentEnemies) {
-            Node enemyNode = enemy.getNode();
-            if (enemyNode == null) continue;
-            minEnemyX = Math.min(minEnemyX, enemyNode.getLayoutX());
-            maxEnemyX = Math.max(maxEnemyX, enemyNode.getLayoutX() + enemyNode.getBoundsInLocal().getWidth());
+        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;
+            groupLeftMost = Math.min(groupLeftMost, enemyNode.getLayoutX());
+            groupRightMost = Math.max(groupRightMost, enemyNode.getLayoutX() + enemyNode.getBoundsInLocal().getWidth());
         }
 
-        // Prüfe Kollision mit Wänden
-        double potentialNextMinX = minEnemyX + (stepSizeX * currentDirection);
-        double potentialNextMaxX = maxEnemyX + (stepSizeX * currentDirection);
-
-        if (currentDirection > 0 && potentialNextMaxX > EFFECTIVE_RIGHT_WALL) {
-            reverseDirection = true;
-        } else if (currentDirection < 0 && potentialNextMinX < EFFECTIVE_LEFT_WALL) {
-            reverseDirection = true;
+        if (currentDirection > 0 && groupRightMost + stepSizeX > gameDimensions.getWidth()) {
+            reverseDirectionAndMoveDown = true;
+        } else if (currentDirection < 0 && groupLeftMost - stepSizeX < 0) {
+            reverseDirectionAndMoveDown = true;
         }
 
-        // Bewegung ausführen
-        double actualDx = reverseDirection ? 0 : (stepSizeX * currentDirection);
-        double actualDy = reverseDirection ? stepSizeY : 0;
+        double dx = 0;
+        double dy = 0;
 
-        if (reverseDirection) {
+        if (reverseDirectionAndMoveDown) {
             entityManager.setEnemyMovementDirection(currentDirection * -1);
+            dy = stepSizeY; // Move down on the turn
+        } else {
+            dx = stepSizeX * currentDirection; // Move sideways
         }
 
-        // Alle Gegner in einem Schritt bewegen (wie im Original)
-        for (Enemy enemy : currentEnemies) {
-            Node enemyNode = enemy.getNode();
-            if (enemyNode == null) continue;
-
-            enemyNode.setLayoutX(enemyNode.getLayoutX() + actualDx);
-            enemyNode.setLayoutY(enemyNode.getLayoutY() + actualDy);
-
-            // Game Over Prüfung
-            if (enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight() >=
-                    gameDimensions.getHeight() - (gameDimensions.getPlayerHeight() * 0.8)) {
-                mainApp.triggerGameOver();
+        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;
+            enemyNode.setLayoutX(enemyNode.getLayoutX() + dx);
+            enemyNode.setLayoutY(enemyNode.getLayoutY() + dy);
+            if (enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight() >= gameDimensions.getHeight() - (gameDimensions.getPlayerHeight() * 0.8)) {
+                if (mainApp.getCurrentGameState() == GameState.PLAYING) mainApp.triggerGameOver();
                 return;
             }
         }
     }
 
-    // WELLE 3: Wellenbewegung nach unten (wie Centipede/Frogger inspiriert)
     private void updateFormationMovement(double deltaTime, long now) {
         waveTime += deltaTime * 2.5; // Wellenbewegungszeit
 
@@ -304,92 +273,118 @@ public class GameUpdater {
         }
     }
 
-    private void checkCollisions() {
-        Player player = entityManager.getPlayer();
-        if (player == null || player.getNode() == null) {
-            return;
-        }
 
-        // Spielerprojektile mit Gegnern/Boss
+
+    private void checkCollisions(long now) {
+        Player player = entityManager.getPlayer();
+        if (player == null || player.getNode() == null) return;
+
+        BossController bossController = entityManager.getBossController();
         Iterator<Rectangle> projIterator = entityManager.getPlayerProjectiles().iterator();
+
         while (projIterator.hasNext()) {
             Rectangle projectile = projIterator.next();
-            boolean projectileHasHit = false;
+            boolean projectileRemovedInThisIteration = false;
 
-            // Kollision mit Boss
-            if (entityManager.isBossActive() && entityManager.getBossEnemy() != null) {
-                Enemy boss = entityManager.getBossEnemy();
-                if (boss.getNode() != null && projectile.getBoundsInParent().intersects(boss.getNode().getBoundsInParent())) {
-                    boss.takeHit();
-                    playSoundEffect("enemy_hit.wav");
+            if (entityManager.isBossActive() && bossController != null && entityManager.getBossEnemy() != null) {
+                Enemy currentBossEntity = entityManager.getBossEnemy();
+                if (currentBossEntity.getNode() != null) {
+                    boolean isIntersecting = projectile.getBoundsInParent().intersects(currentBossEntity.getNode().getBoundsInParent());
+                    boolean isBossRetreating = bossController.isBossRetreating();
 
-                    if (!boss.isAlive()) {
-                        uiManager.addScore(boss.getPoints());
-                        playSoundEffect("boss_explosion.wav");
-                        entityManager.bossDefeated();
+                    if (isIntersecting && !isBossRetreating) {
+                        bossController.bossTakeHit();
+                        playSoundEffect("enemy_hit.wav");
+
+                        Enemy bossAfterHit = entityManager.getBossEnemy();
+                        if (bossAfterHit != null && !bossAfterHit.isAlive() && bossController.getBossPhase() >= 3) {
+                            uiManager.addScore(currentBossEntity.getPoints());
+                            playSoundEffect("boss_explosion.wav");
+                            entityManager.bossDefeated();
+                        }
+                        projIterator.remove();
+                        entityManager.removeProjectileNode(projectile);
+                        projectileRemovedInThisIteration = true;
                     }
-                    projectileHasHit = true;
                 }
-            }
 
-            // Kollision mit normalen Gegnern
-            if (!projectileHasHit && !entityManager.isBossActive()) {
+                if (!projectileRemovedInThisIteration && bossController.isBossRetreating() && !bossController.getMinionEnemies().isEmpty()) {
+                    List<Rectangle> singleProjectileList = new ArrayList<>();
+                    singleProjectileList.add(projectile);
+                    if (bossController.checkPlayerProjectileVsMinionCollisions(singleProjectileList, uiManager)) {
+                        playSoundEffect("enemy_hit.wav");
+                        projIterator.remove(); // Projectile node removal handled by bossController
+                        // projectileRemovedInThisIteration = true; // Already handled by the fact that projIterator.remove() is called
+                    }
+                }
+
+            } else if (!projectileRemovedInThisIteration && !entityManager.getEnemies().isEmpty()) {
                 Iterator<Enemy> enemyIterator = entityManager.getEnemies().iterator();
                 while (enemyIterator.hasNext()) {
                     Enemy enemy = enemyIterator.next();
                     if (enemy.getNode() != null && projectile.getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {
-                        enemy.takeHit();
-                        playSoundEffect("enemy_hit.wav");
-
+                        enemy.takeHit(); playSoundEffect("enemy_hit.wav");
                         if (!enemy.isAlive()) {
-                            enemyIterator.remove();
-                            entityManager.removeEnemyNode(enemy.getNode());
-                            uiManager.addScore(enemy.getPoints());
-                            playSoundEffect("enemy_explosion.wav");
+                            enemyIterator.remove(); entityManager.removeEnemyNode(enemy.getNode());
+                            uiManager.addScore(enemy.getPoints()); playSoundEffect("enemy_explosion.wav");
                         }
-                        projectileHasHit = true;
-                        break;
+                        projIterator.remove(); entityManager.removeProjectileNode(projectile);
+                        // projectileRemovedInThisIteration = true; // No need, break immediately
+                        break; // Projectile is used, exit inner loop
                     }
                 }
             }
+        }
 
-            if (projectileHasHit) {
-                projIterator.remove();
-                entityManager.removeProjectileNode(projectile);
+        if (entityManager.isBossActive() && bossController != null) {
+            if (bossController.checkBossProjectileCollisions(player)) {
+                handlePlayerDeath(); return;
             }
         }
 
-        // Gegner/Boss mit Spieler
-        if (!entityManager.isBossActive()) {
-            for (Enemy enemy : new ArrayList<>(entityManager.getEnemies())) {
-                if (enemy.getNode() != null && player.getNode().getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {
-                    handlePlayerDeath();
-                    return;
-                }
+        if (entityManager.isBossActive() && bossController != null && entityManager.getBossEnemy() != null) {
+            Enemy currentBossEntity = entityManager.getBossEnemy();
+            if (currentBossEntity.getNode() != null && !bossController.isBossRetreating() &&
+                    player.getNode().getBoundsInParent().intersects(currentBossEntity.getNode().getBoundsInParent())) {
+                handlePlayerDeath(); return;
             }
-        } else if (entityManager.getBossEnemy() != null && entityManager.getBossEnemy().getNode() != null) {
-            if (player.getNode().getBoundsInParent().intersects(entityManager.getBossEnemy().getNode().getBoundsInParent())) {
-                handlePlayerDeath();
-                return;
+            if (bossController.isBossRetreating() && bossController.checkPlayerVsMinionCollisions(player)) {
+                handlePlayerDeath(); return;
+            }
+        } else if (!entityManager.getEnemies().isEmpty()) {
+            for (Enemy enemy : new ArrayList<>(entityManager.getEnemies())) { // Iterate copy for safety if player dies
+                if (enemy.getNode() != null && player.getNode().getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {
+                    handlePlayerDeath(); return;
+                }
             }
         }
     }
 
     private void handlePlayerDeath() {
-        Player player = entityManager.getPlayer();
-        if (player == null) return;
-        playSoundEffect("player_explosion.wav");
-        mainApp.triggerGameOver();
+        Player player = entityManager.getPlayer(); if (player == null) return;
+        if (mainApp.getCurrentGameState() == GameState.PLAYING) {
+            playSoundEffect("player_explosion.wav");
+            mainApp.triggerGameOver();
+        }
     }
-
     private void playSoundEffect(String sfxFileName) {
         if (activeVoiceProfile != null && activeVoiceProfile.getSfxFolderPath() != null) {
-            String fullSfxPath = activeVoiceProfile.getSfxFolderPath() + sfxFileName;
+            String sfxPath = activeVoiceProfile.getSfxFolderPath();
+            if (!sfxPath.endsWith("/")) sfxPath += "/";
+            String fullSfxPath = sfxPath.startsWith("/") ? sfxPath : "/" + sfxPath;
+            fullSfxPath += sfxFileName;
             try {
-                AudioClip clip = new AudioClip(getClass().getResource(fullSfxPath).toExternalForm());
+                String resourceUrl = getClass().getResource(fullSfxPath).toExternalForm();
+                if (resourceUrl == null) {
+                    System.err.println("SFX Resource URL is null for: " + fullSfxPath);
+                    return;
+                }
+                AudioClip clip = new AudioClip(resourceUrl);
                 clip.play();
+            } catch (NullPointerException npe) {
+                System.err.println("SFX Resource not found (NullPointerException): " + fullSfxPath + " - " + npe.getMessage());
             } catch (Exception e) {
-                System.err.println("SFX Fehler: " + fullSfxPath + " - " + e.getMessage());
+                System.err.println("SFX Error loading: " + fullSfxPath + " - " + e.getClass().getSimpleName() + ": " + e.getMessage());
             }
         }
     }

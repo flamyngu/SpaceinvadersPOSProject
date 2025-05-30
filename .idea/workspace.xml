@@ -4,14 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="credits roll needs css finxing. sonnst funktioniert alles&#10;&#10;need to update the starting page look!&#10;am 11.mai.25">
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/BossController.java" afterDir="false" />
+    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing (error with getGamePane())) &#10;acc: sta230286@spg..">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/BossController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/BossController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Enemy.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Enemy.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Player.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Player.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -165,7 +163,9 @@
       <workItem from="1746887897428" duration="13000" />
       <workItem from="1746949696674" duration="12307000" />
       <workItem from="1747498770584" duration="725000" />
-      <workItem from="1747916562758" duration="11381000" />
+      <workItem from="1747916562758" duration="11833000" />
+      <workItem from="1748107542502" duration="379000" />
+      <workItem from="1748622411747" duration="6784000" />
     </task>
     <task id="LOCAL-00001" summary="First Logic + Score">
       <option name="closed" value="true" />
@@ -231,7 +231,15 @@
       <option name="project" value="LOCAL" />
       <updated>1746963924053</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing (error with getGamePane())) &#10;acc: sta230286@spg..">
+      <option name="closed" value="true" />
+      <created>1747928403172</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1747928403172</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -245,6 +253,8 @@
     <MESSAGE value="starting page not completed,&#10;fixed the wave problem.&#10;&#10;need to update the starting page look!&#10;am 9.mai.25" />
     <MESSAGE value="Starting Page Complited, css finally done. &#10;look at tree for file struncture&#10;&#10;need to update the starting page look!&#10;am 9.mai.25" />
     <MESSAGE value="credits roll needs css finxing. sonnst funktioniert alles&#10;&#10;need to update the starting page look!&#10;am 11.mai.25" />
-    <option name="LAST_COMMIT_MESSAGE" value="credits roll needs css finxing. sonnst funktioniert alles&#10;&#10;need to update the starting page look!&#10;am 11.mai.25" />
+    <MESSAGE value="22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing) &#10;acc: sta230286@spg.." />
+    <MESSAGE value="22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing (error with getGamePane())) &#10;acc: sta230286@spg.." />
+    <option name="LAST_COMMIT_MESSAGE" value="22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing (error with getGamePane())) &#10;acc: sta230286@spg.." />
   </component>
 </project>

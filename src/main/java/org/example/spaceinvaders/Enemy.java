@@ -5,7 +5,7 @@ import javafx.scene.Node;
 public class Enemy {
     private Node node;
     private int health;
-    private final int points; // Punkte sollten final sein
+    private final int points;
 
     public Enemy(Node node, int initialHealth, int points) {
         this.node = node;
@@ -22,7 +22,9 @@ public class Enemy {
         if (health > 0) {
             health--;
         }
-        // Hier könntest du visuelles Feedback implementieren, wenn der Gegner getroffen wird
-        // z.B. node.setOpacity(0.5); dann mit PauseTransition zurücksetzen
+    }
+
+    public void setHealth(int newHealth) {
+        this.health = Math.max(0, newHealth); // Ensure health doesn't go below 0
     }
 }
