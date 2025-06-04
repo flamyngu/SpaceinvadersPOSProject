@@ -57,3 +57,10 @@ Und so war die Grundidee geboren:
     - `Continue`
     - `Reset`
     - `Back to Main Menu`
+
+
+
+git fetch origin
+git reset --hard origin/main
+
+if I want to reset my current local changes and start from the last remote check-point
