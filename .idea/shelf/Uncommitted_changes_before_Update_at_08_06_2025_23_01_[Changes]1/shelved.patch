@@ -1,0 +1,1496 @@
+Index: src/main/java/org/example/spaceinvaders/GameEntityManager.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package org.example.spaceinvaders;\r\n\r\nimport javafx.animation.PauseTransition;\r\nimport javafx.scene.Node;\r\nimport javafx.scene.layout.Pane;\r\nimport javafx.scene.paint.Color;\r\nimport javafx.scene.shape.Rectangle;\r\nimport javafx.util.Duration;\r\n\r\nimport java.util.ArrayList;\r\nimport java.util.List;\r\n\r\npublic class GameEntityManager {\r\n    private Pane gamePane;\r\n    private GameDimensions gameDimensions;\r\n    private UIManager uiManager;\r\n    private BossController bossController;\r\n\r\n    private Enemy bossEnemy = null;\r\n    private boolean bossActive = false;\r\n    private int currentWaveNumber = 0;\r\n    private boolean isLoadingNextWave = false;\r\n    private boolean bossHasSpawnedThisGameCycle = false;\r\n    private boolean bossWasJustDefeated = false; // True when final boss phase is cleared\r\n    private double enemyMovementDirection = 1.0;\r\n    private double enemyGroupSpeedX;\r\n    private double enemyGroupSpeedY;\r\n    private boolean moveDownNextCycle = false;\r\n\r\n    private Player player;\r\n    private List<Enemy> enemies = new ArrayList<>();\r\n    private List<Rectangle> playerProjectiles = new ArrayList<>();\r\n\r\n    public GameEntityManager(Pane gamePane, GameDimensions gameDimensions, UIManager uiManager) {\r\n        this.gamePane = gamePane;\r\n        this.gameDimensions = gameDimensions;\r\n        this.uiManager = uiManager;\r\n\r\n        this.enemyGroupSpeedX = this.gameDimensions.getWidth() * 0.002;\r\n        if(this.enemyGroupSpeedX < 1.0) this.enemyGroupSpeedX = 1.0;\r\n        this.enemyGroupSpeedY = this.gameDimensions.getEnemyHeight() * 0.5;\r\n\r\n        this.bossController = new BossController(this, gameDimensions, uiManager);\r\n    }\r\n\r\n    public void createPlayer() {\r\n        this.player = new Player(gameDimensions);\r\n        gamePane.getChildren().add(player.getNode());\r\n    }\r\n\r\n    public void createEnemies() {\r\n        if (bossActive) {\r\n            System.out.println(\"GameEntityManager.createEnemies(): Boss is active, not creating normal enemies.\");\r\n            // If createEnemies is called and boss is active, it implies a logic flow issue elsewhere,\r\n            // as the calling method should ideally prevent this.\r\n            // isLoadingNextWave will be handled by the caller in such a scenario.\r\n            return;\r\n        }\r\n\r\n        // Clear existing enemies - iterate over a copy to avoid ConcurrentModificationException\r\n        for (Enemy oldEnemy : new ArrayList<>(enemies)) {\r\n            if (oldEnemy.getNode() != null) {\r\n                gamePane.getChildren().remove(oldEnemy.getNode());\r\n            }\r\n        }\r\n        enemies.clear();\r\n\r\n        double startX = (gameDimensions.getWidth() - (GameDimensions.ENEMIES_PER_ROW * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX()) - gameDimensions.getEnemySpacingX())) / 2;\r\n        double startY = gameDimensions.getHeight() * (50.0 / 600.0);\r\n\r\n        for (int row = 0; row < GameDimensions.ENEMY_ROWS; row++) {\r\n            for (int col = 0; col < GameDimensions.ENEMIES_PER_ROW; col++) {\r\n                Rectangle enemyShape = new Rectangle(gameDimensions.getEnemyWidth(), gameDimensions.getEnemyHeight());\r\n                enemyShape.setFill(Color.rgb((row * 60) % 255, (col * 40) % 255, 180));\r\n                double x = startX + col * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX());\r\n                double y = startY + row * (gameDimensions.getEnemyHeight() + gameDimensions.getEnemySpacingY());\r\n                enemyShape.setLayoutX(x);\r\n                enemyShape.setLayoutY(y);\r\n                Enemy newLogicalEnemy = new Enemy(enemyShape, 1, GameDimensions.POINTS_PER_ENEMY);\r\n                enemies.add(newLogicalEnemy);\r\n                gamePane.getChildren().add(enemyShape);\r\n            }\r\n        }\r\n        System.out.println(\"GameEntityManager.createEnemies(): Created \" + enemies.size() + \" enemies for wave \" + currentWaveNumber);\r\n        // isLoadingNextWave = false; // DO NOT set here. The calling PauseTransition or method will handle it.\r\n    }\r\n\r\n    public void createProjectile() {\r\n        if (player == null) return;\r\n        Rectangle projectile = new Rectangle(gameDimensions.getProjectileWidth(), gameDimensions.getProjectileHeight());\r\n        projectile.setFill(Color.YELLOW);\r\n        projectile.setX(player.getX() + player.getWidth() / 2 - gameDimensions.getProjectileWidth() / 2);\r\n        projectile.setY(player.getY() - gameDimensions.getProjectileHeight());\r\n        playerProjectiles.add(projectile);\r\n        gamePane.getChildren().add(projectile);\r\n    }\r\n\r\n    public void createBoss() {\r\n        if(bossActive){ // Already active, do nothing\r\n            return;\r\n        }\r\n        for(Enemy oldEnemy : new ArrayList<>(enemies)) { // Clear normal enemies\r\n            if(oldEnemy.getNode() != null) gamePane.getChildren().remove(oldEnemy.getNode());\r\n        }\r\n        enemies.clear();\r\n\r\n        double bossWidth = gameDimensions.getEnemyWidth() * GameDimensions.BOSS_WIDTH_MULTIPLIER;\r\n        double bossHeight = gameDimensions.getEnemyHeight() * GameDimensions.BOSS_HEIGHT_MULTIPLIER;\r\n        Rectangle bossShape = new Rectangle(bossWidth, bossHeight);\r\n\r\n        this.bossEnemy = new Enemy(bossShape, GameDimensions.BOSS_HEALTH, GameDimensions.BOSS_POINTS);\r\n        this.bossActive = true;\r\n        gamePane.getChildren().add(bossShape);\r\n        uiManager.showBossSpawnMessage(); // This message has its own duration\r\n\r\n        bossController.initializeBoss();\r\n\r\n        isLoadingNextWave = false; // Boss creation sequence is complete\r\n    }\r\n\r\n    public void spawnEnemyWaveInitial() {\r\n        if (enemies.isEmpty() && !bossActive && !isLoadingNextWave) {\r\n            isLoadingNextWave = true; // Mark as loading\r\n            currentWaveNumber = 1;\r\n            createEnemies(); // Synchronous call\r\n            uiManager.showWaveStartMessage(currentWaveNumber);\r\n            isLoadingNextWave = false; // Done loading initial wave\r\n        }\r\n    }\r\n\r\n    public void spawnNextWaveOrBoss() {\r\n        if(isLoadingNextWave) { return; } // Guard: already processing a wave/boss spawn\r\n        isLoadingNextWave = true;         // Mark as loading for this new spawn sequence\r\n\r\n        if(!bossWasJustDefeated){ // Don't increment wave if boss was just beaten (game ends)\r\n            currentWaveNumber++;\r\n        } else {\r\n            // If boss was just defeated, we shouldn't be spawning a new wave or boss\r\n            isLoadingNextWave = false; // Reset flag and exit\r\n            return;\r\n        }\r\n\r\n        boolean spawnBossNow = false;\r\n        if(currentWaveNumber >= GameDimensions.WAVE_NUMBER_TO_SPAWN_BOSS && !bossHasSpawnedThisGameCycle){\r\n            spawnBossNow = true;\r\n        }\r\n\r\n        if(spawnBossNow){\r\n            // The UIManager.showBossSpawnMessage() is called within createBoss()\r\n            // and has its own 2-second duration. The PauseTransition here is for the delay *before* boss creation.\r\n            PauseTransition bossPause = new PauseTransition(Duration.seconds(2));\r\n            bossPause.setOnFinished(event -> {\r\n                bossHasSpawnedThisGameCycle = true;\r\n                createBoss(); // createBoss() will set isLoadingNextWave = false upon completion\r\n            });\r\n            bossPause.play();\r\n        }else{\r\n            uiManager.showWaveClearMessage(currentWaveNumber); // Shows \"Wave Cleared! Get Ready for Wave X\" (2s duration)\r\n            PauseTransition wavePause = new PauseTransition(Duration.seconds(2)); // Match UI message duration\r\n            wavePause.setOnFinished(event -> {\r\n                createEnemies();           // Create the enemies for the next wave\r\n                isLoadingNextWave = false; // NOW it's safe to say we are no longer loading this wave.\r\n            });\r\n            wavePause.play();\r\n        }\r\n    }\r\n\r\n    public int getCurrentWaveNumber(){\r\n        return currentWaveNumber;\r\n    }\r\n\r\n    public void removeEnemy(Enemy enemy) {\r\n        if (enemy != null) {\r\n            if(enemy.getNode() != null) gamePane.getChildren().remove(enemy.getNode());\r\n            enemies.remove(enemy);\r\n        }\r\n    }\r\n\r\n    public void removeProjectileNode(Node projectileNode) {\r\n        if (projectileNode != null) {\r\n            gamePane.getChildren().remove(projectileNode);\r\n        }\r\n    }\r\n\r\n    public void bossDefeated() {\r\n        if(bossEnemy != null && bossEnemy.getNode() != null) {\r\n            gamePane.getChildren().remove(bossEnemy.getNode());\r\n        }\r\n        this.bossActive = false;\r\n        this.bossEnemy = null;\r\n        setBossAlreadySpawnedThisCycle(true);\r\n        this.bossWasJustDefeated = true;\r\n        isLoadingNextWave = false; // No longer loading anything, game might end or transition\r\n    }\r\n\r\n    public void setBossAlreadySpawnedThisCycle(boolean status){\r\n        this.bossHasSpawnedThisGameCycle = status;\r\n    }\r\n\r\n    public void resetGame(){\r\n        for(Enemy enemy : new ArrayList<>(enemies)) { // Iterate over a copy\r\n            if(enemy.getNode()!=null)gamePane.getChildren().remove(enemy.getNode());\r\n        }\r\n        enemies.clear();\r\n        for(Rectangle projectile : new ArrayList<>(playerProjectiles)){ // Iterate over a copy\r\n            if(projectile!=null)gamePane.getChildren().remove(projectile);\r\n        }\r\n        playerProjectiles.clear();\r\n\r\n        if(bossEnemy!=null &&bossEnemy.getNode()!=null){\r\n            gamePane.getChildren().remove(bossEnemy.getNode());\r\n        }\r\n        bossEnemy  = null;\r\n        bossActive = false;\r\n        bossWasJustDefeated = false;\r\n        bossHasSpawnedThisGameCycle = false;\r\n\r\n        currentWaveNumber = 0; // Reset wave number\r\n        isLoadingNextWave = false; // Reset loading flag\r\n        if(player != null && player.getNode() != null)gamePane.getChildren().remove(player.getNode());\r\n        player = null;\r\n        this.enemyMovementDirection = 1.0;\r\n        this.moveDownNextCycle = false;\r\n\r\n        if (bossController != null) {\r\n            bossController.resetBoss();\r\n        }\r\n    }\r\n\r\n    public void removeProjectile(Node projectileNode) {\r\n        if (projectileNode != null) {\r\n            gamePane.getChildren().remove(projectileNode);\r\n            if (projectileNode instanceof Rectangle) {\r\n                playerProjectiles.remove((Rectangle) projectileNode);\r\n            }\r\n        }\r\n    }\r\n\r\n    public void removeEnemyNode(Node enemyNode) {\r\n        if(enemyNode != null){\r\n            gamePane.getChildren().remove(enemyNode);\r\n        }\r\n    }\r\n\r\n    public void resetBossHealth(int newHealth) {\r\n        if (bossEnemy != null) {\r\n            bossEnemy.setHealth(newHealth);\r\n        }\r\n    }\r\n\r\n    public Player getPlayer() { return player; }\r\n    public boolean bossAlreadySpawnedThisCycle(){return this.bossHasSpawnedThisGameCycle;}\r\n    public List<Enemy> getEnemies() { return enemies; }\r\n    public List<Rectangle> getPlayerProjectiles() { return playerProjectiles; }\r\n    public boolean isBossActive() { return bossActive; }\r\n    public boolean isLoadingNextWave() {return isLoadingNextWave;}\r\n    public Enemy getBossEnemy() { return bossEnemy;}\r\n    public double getEnemyMovementDirection(){return enemyMovementDirection;}\r\n    public void setEnemyMovementDirection(double direction){this.enemyMovementDirection = direction;}\r\n    public double getEnemyGroupSpeedX(){return enemyGroupSpeedX;}\r\n    public double getEnemyGroupSpeedY() {return enemyGroupSpeedY;}\r\n    public boolean shouldMoveDownNextCycle(){return moveDownNextCycle;}\r\n    public void setMoveDownNextCycle(boolean moveDown){moveDownNextCycle = moveDown;}\r\n    public BossController getBossController() { return bossController; }\r\n    public Pane getGamePane() { return gamePane; }\r\n    public boolean wasBossJustDefeated() { return bossWasJustDefeated; }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/org/example/spaceinvaders/GameEntityManager.java b/src/main/java/org/example/spaceinvaders/GameEntityManager.java
+--- a/src/main/java/org/example/spaceinvaders/GameEntityManager.java	(revision 3764d5dcda23f9c1b182cde0985a4824e9b442d1)
++++ b/src/main/java/org/example/spaceinvaders/GameEntityManager.java	(date 1749415449524)
+@@ -21,7 +21,7 @@
+     private int currentWaveNumber = 0;
+     private boolean isLoadingNextWave = false;
+     private boolean bossHasSpawnedThisGameCycle = false;
+-    private boolean bossWasJustDefeated = false; // True when final boss phase is cleared
++    private boolean bossWasJustDefeated = false;
+     private double enemyMovementDirection = 1.0;
+     private double enemyGroupSpeedX;
+     private double enemyGroupSpeedY;
+@@ -31,39 +31,65 @@
+     private List<Enemy> enemies = new ArrayList<>();
+     private List<Rectangle> playerProjectiles = new ArrayList<>();
+ 
+-    public GameEntityManager(Pane gamePane, GameDimensions gameDimensions, UIManager uiManager) {
++    public GameEntityManager(Pane gamePane, GameDimensions gameDimensions, UIManager uiManager, SoundManager soundManager) {
+         this.gamePane = gamePane;
+         this.gameDimensions = gameDimensions;
+         this.uiManager = uiManager;
++        // Listen werden hier bereits als leer initialisiert
+ 
+         this.enemyGroupSpeedX = this.gameDimensions.getWidth() * 0.002;
+         if(this.enemyGroupSpeedX < 1.0) this.enemyGroupSpeedX = 1.0;
+         this.enemyGroupSpeedY = this.gameDimensions.getEnemyHeight() * 0.5;
+ 
+-        this.bossController = new BossController(this, gameDimensions, uiManager);
++        this.bossController = new BossController(this, gameDimensions, uiManager, soundManager);
++        resetInitialStateFlags();
++        System.out.println("GameEntityManager: Konstruktor - gamePane Children: " + this.gamePane.getChildren().size());
+     }
++
++    private void resetInitialStateFlags() {
++        this.bossEnemy = null;
++        this.bossActive = false;
++        this.currentWaveNumber = 0;
++        this.isLoadingNextWave = false;
++        this.bossHasSpawnedThisGameCycle = false;
++        this.bossWasJustDefeated = false;
++        this.enemyMovementDirection = 1.0;
++        this.moveDownNextCycle = false;
++        this.player = null;
++    }
++
+ 
+     public void createPlayer() {
+-        this.player = new Player(gameDimensions);
+-        gamePane.getChildren().add(player.getNode());
++        this.player = new Player(gameDimensions); // Player erstellt und an Position gesetzt
++        if (!gamePane.getChildren().contains(player.getNode())) { // Nur hinzufügen, wenn nicht schon da (sollte nicht passieren bei neuem Pane)
++            gamePane.getChildren().add(player.getNode());
++        } else {
++            System.out.println("WARNUNG: Spieler-Node war bereits in gamePane in createPlayer!");
++        }
++        System.out.println("GameEntityManager.createPlayer(): Spieler zu gamePane hinzugefügt. gamePane Children: " + gamePane.getChildren().size());
+     }
+ 
+     public void createEnemies() {
++        System.out.println("GameEntityManager.createEnemies(): Start. Aktuelle Gegner in Liste: " + enemies.size() + ", Kinder in gamePane: " + gamePane.getChildren().size());
++        // Debug-Ausgabe der aktuellen Kinder im gamePane VOR dem Hinzufügen neuer Gegner
++        // for (Node n : gamePane.getChildren()) {
++        //     System.out.println("  Vor createEnemies - Kind in gamePane: " + n + " LayoutX/Y: " + n.getLayoutX() + "/" + n.getLayoutY());
++        // }
++
+         if (bossActive) {
+-            System.out.println("GameEntityManager.createEnemies(): Boss is active, not creating normal enemies.");
+-            // If createEnemies is called and boss is active, it implies a logic flow issue elsewhere,
+-            // as the calling method should ideally prevent this.
+-            // isLoadingNextWave will be handled by the caller in such a scenario.
++            System.out.println("GameEntityManager.createEnemies(): Boss ist aktiv, keine normalen Gegner erstellt.");
+             return;
+         }
+ 
+-        // Clear existing enemies - iterate over a copy to avoid ConcurrentModificationException
+-        for (Enemy oldEnemy : new ArrayList<>(enemies)) {
+-            if (oldEnemy.getNode() != null) {
++        // Da der EntityManager neu erstellt wird, sollten die Listen 'enemies' und 'playerProjectiles' bereits leer sein.
++        // Und das gamePane sollte auch leer sein (außer dem Spieler, falls createPlayer vorher aufgerufen wurde).
++        // Dennoch schadet es nicht, explizit zu leeren, falls die Logik komplexer wird.
++        for (Enemy oldEnemy : new ArrayList<>(enemies)) { // Sicherstellen, dass die logische Liste leer ist
++            if (oldEnemy.getNode() != null && gamePane.getChildren().contains(oldEnemy.getNode())) {
+                 gamePane.getChildren().remove(oldEnemy.getNode());
+             }
+         }
+-        enemies.clear();
++        enemies.clear(); // Logische Liste leeren
+ 
+         double startX = (gameDimensions.getWidth() - (GameDimensions.ENEMIES_PER_ROW * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX()) - gameDimensions.getEnemySpacingX())) / 2;
+         double startY = gameDimensions.getHeight() * (50.0 / 600.0);
+@@ -76,13 +102,18 @@
+                 double y = startY + row * (gameDimensions.getEnemyHeight() + gameDimensions.getEnemySpacingY());
+                 enemyShape.setLayoutX(x);
+                 enemyShape.setLayoutY(y);
++                System.out.println("  Gegner erstellt: Reihe=" + row + ", Spalte=" + col + ", Y-Position=" + y +
++                        ", Höhe=" + enemyShape.getBoundsInLocal().getHeight());
+                 Enemy newLogicalEnemy = new Enemy(enemyShape, 1, GameDimensions.POINTS_PER_ENEMY);
+                 enemies.add(newLogicalEnemy);
+-                gamePane.getChildren().add(enemyShape);
++                if (!gamePane.getChildren().contains(enemyShape)) {
++                    gamePane.getChildren().add(enemyShape);
++                } else {
++                    System.out.println("WARNUNG: Gegner-Node war bereits in gamePane in createEnemies!");
++                }
+             }
+         }
+-        System.out.println("GameEntityManager.createEnemies(): Created " + enemies.size() + " enemies for wave " + currentWaveNumber);
+-        // isLoadingNextWave = false; // DO NOT set here. The calling PauseTransition or method will handle it.
++        System.out.println("GameEntityManager.createEnemies(): " + enemies.size() + " Gegner erstellt und zu gamePane hinzugefügt für Welle " + currentWaveNumber + ". gamePane Children: " + gamePane.getChildren().size());
+     }
+ 
+     public void createProjectile() {
+@@ -96,13 +127,18 @@
+     }
+ 
+     public void createBoss() {
+-        if(bossActive){ // Already active, do nothing
++        if(bossActive){
+             return;
+         }
+-        for(Enemy oldEnemy : new ArrayList<>(enemies)) { // Clear normal enemies
+-            if(oldEnemy.getNode() != null) gamePane.getChildren().remove(oldEnemy.getNode());
++        System.out.println("createBoss: Entferne normale Gegner. enemies.size()=" + enemies.size());
++        for(Enemy oldEnemy : new ArrayList<>(enemies)) {
++            if(oldEnemy.getNode() != null && gamePane.getChildren().contains(oldEnemy.getNode())) {
++                gamePane.getChildren().remove(oldEnemy.getNode());
++            }
+         }
+         enemies.clear();
++        System.out.println("createBoss: Normale Gegner entfernt. enemies.size()=" + enemies.size());
++
+ 
+         double bossWidth = gameDimensions.getEnemyWidth() * GameDimensions.BOSS_WIDTH_MULTIPLIER;
+         double bossHeight = gameDimensions.getEnemyHeight() * GameDimensions.BOSS_HEIGHT_MULTIPLIER;
+@@ -111,32 +147,40 @@
+         this.bossEnemy = new Enemy(bossShape, GameDimensions.BOSS_HEALTH, GameDimensions.BOSS_POINTS);
+         this.bossActive = true;
+         gamePane.getChildren().add(bossShape);
+-        uiManager.showBossSpawnMessage(); // This message has its own duration
++        uiManager.showBossSpawnMessage();
+ 
+-        bossController.initializeBoss();
++        bossController.initializeBoss(); // Initialisiert Position etc.
+ 
+-        isLoadingNextWave = false; // Boss creation sequence is complete
++        isLoadingNextWave = false;
++        System.out.println("createBoss: Boss erstellt. gamePane Children: " + gamePane.getChildren().size());
+     }
+ 
+     public void spawnEnemyWaveInitial() {
++        System.out.println("spawnEnemyWaveInitial: Start. enemies.isEmpty()=" + enemies.isEmpty() + ", bossActive=" + bossActive + ", isLoadingNextWave=" + isLoadingNextWave);
++        // Da EntityManager neu erstellt wird, sind Listen leer und Flags auf false.
++        // Die Bedingung sollte also true sein.
+         if (enemies.isEmpty() && !bossActive && !isLoadingNextWave) {
+-            isLoadingNextWave = true; // Mark as loading
++            isLoadingNextWave = true;
+             currentWaveNumber = 1;
+-            createEnemies(); // Synchronous call
++            createEnemies(); // Erstellt und fügt Gegner zu gamePane hinzu
+             uiManager.showWaveStartMessage(currentWaveNumber);
+-            isLoadingNextWave = false; // Done loading initial wave
++            isLoadingNextWave = false;
++        } else {
++            System.out.println("spawnEnemyWaveInitial: Bedingungen nicht erfüllt, keine Welle gespawnt.");
++            if (!enemies.isEmpty()) System.out.println("  Grund: enemies nicht leer, size=" + enemies.size());
++            if (bossActive) System.out.println("  Grund: bossActive ist true");
++            if (isLoadingNextWave) System.out.println("  Grund: isLoadingNextWave ist true");
+         }
+     }
+ 
+     public void spawnNextWaveOrBoss() {
+-        if(isLoadingNextWave) { return; } // Guard: already processing a wave/boss spawn
+-        isLoadingNextWave = true;         // Mark as loading for this new spawn sequence
++        if(isLoadingNextWave) { return; }
++        isLoadingNextWave = true;
+ 
+-        if(!bossWasJustDefeated){ // Don't increment wave if boss was just beaten (game ends)
++        if(!bossWasJustDefeated){
+             currentWaveNumber++;
+         } else {
+-            // If boss was just defeated, we shouldn't be spawning a new wave or boss
+-            isLoadingNextWave = false; // Reset flag and exit
++            isLoadingNextWave = false;
+             return;
+         }
+ 
+@@ -146,20 +190,18 @@
+         }
+ 
+         if(spawnBossNow){
+-            // The UIManager.showBossSpawnMessage() is called within createBoss()
+-            // and has its own 2-second duration. The PauseTransition here is for the delay *before* boss creation.
+             PauseTransition bossPause = new PauseTransition(Duration.seconds(2));
+             bossPause.setOnFinished(event -> {
+                 bossHasSpawnedThisGameCycle = true;
+-                createBoss(); // createBoss() will set isLoadingNextWave = false upon completion
++                createBoss();
+             });
+             bossPause.play();
+         }else{
+-            uiManager.showWaveClearMessage(currentWaveNumber); // Shows "Wave Cleared! Get Ready for Wave X" (2s duration)
+-            PauseTransition wavePause = new PauseTransition(Duration.seconds(2)); // Match UI message duration
++            uiManager.showWaveClearMessage(currentWaveNumber);
++            PauseTransition wavePause = new PauseTransition(Duration.seconds(2));
+             wavePause.setOnFinished(event -> {
+-                createEnemies();           // Create the enemies for the next wave
+-                isLoadingNextWave = false; // NOW it's safe to say we are no longer loading this wave.
++                createEnemies();
++                isLoadingNextWave = false;
+             });
+             wavePause.play();
+         }
+@@ -171,64 +213,77 @@
+ 
+     public void removeEnemy(Enemy enemy) {
+         if (enemy != null) {
+-            if(enemy.getNode() != null) gamePane.getChildren().remove(enemy.getNode());
++            if(enemy.getNode() != null && gamePane.getChildren().contains(enemy.getNode())) {
++                gamePane.getChildren().remove(enemy.getNode());
++            }
+             enemies.remove(enemy);
+         }
+     }
+ 
+     public void removeProjectileNode(Node projectileNode) {
+-        if (projectileNode != null) {
++        if (projectileNode != null && gamePane.getChildren().contains(projectileNode)) {
+             gamePane.getChildren().remove(projectileNode);
+         }
+     }
+ 
+     public void bossDefeated() {
+-        if(bossEnemy != null && bossEnemy.getNode() != null) {
++        if(bossEnemy != null && bossEnemy.getNode() != null && gamePane.getChildren().contains(bossEnemy.getNode())) {
+             gamePane.getChildren().remove(bossEnemy.getNode());
+         }
+         this.bossActive = false;
+         this.bossEnemy = null;
+         setBossAlreadySpawnedThisCycle(true);
+         this.bossWasJustDefeated = true;
+-        isLoadingNextWave = false; // No longer loading anything, game might end or transition
++        isLoadingNextWave = false;
+     }
+ 
+     public void setBossAlreadySpawnedThisCycle(boolean status){
+         this.bossHasSpawnedThisGameCycle = status;
+     }
+ 
++    // Diese Methode wird nicht mehr explizit von MusicalInvaders aufgerufen, wenn der EntityManager
++    // bei jedem Spielstart neu erstellt wird. Der Konstruktor übernimmt die Initialisierung.
++    // Sie kann aber intern oder für andere Zwecke nützlich bleiben.
+     public void resetGame(){
+-        for(Enemy enemy : new ArrayList<>(enemies)) { // Iterate over a copy
+-            if(enemy.getNode()!=null)gamePane.getChildren().remove(enemy.getNode());
++        System.out.println("GameEntityManager.resetGame(): Start. Kinder in gamePane VOR Reset: " + gamePane.getChildren().size());
++        System.out.println("  enemies.size() VOR Reset: " + enemies.size());
++        System.out.println("  playerProjectiles.size() VOR Reset: " + playerProjectiles.size());
++
++        // Leere Listen und entferne Nodes von der gamePane
++        for(Enemy enemy : new ArrayList<>(enemies)) {
++            if(enemy.getNode()!=null && gamePane.getChildren().contains(enemy.getNode())) {
++                gamePane.getChildren().remove(enemy.getNode());
++            }
+         }
+         enemies.clear();
+-        for(Rectangle projectile : new ArrayList<>(playerProjectiles)){ // Iterate over a copy
+-            if(projectile!=null)gamePane.getChildren().remove(projectile);
++
++        for(Rectangle projectile : new ArrayList<>(playerProjectiles)){
++            if(projectile!=null && gamePane.getChildren().contains(projectile)) {
++                gamePane.getChildren().remove(projectile);
++            }
+         }
+         playerProjectiles.clear();
+ 
+-        if(bossEnemy!=null &&bossEnemy.getNode()!=null){
++        if(bossEnemy!=null && bossEnemy.getNode()!=null && gamePane.getChildren().contains(bossEnemy.getNode())){
+             gamePane.getChildren().remove(bossEnemy.getNode());
+         }
+-        bossEnemy  = null;
+-        bossActive = false;
+-        bossWasJustDefeated = false;
+-        bossHasSpawnedThisGameCycle = false;
++        if(player != null && player.getNode() != null && gamePane.getChildren().contains(player.getNode())){
++            gamePane.getChildren().remove(player.getNode());
++        }
+ 
+-        currentWaveNumber = 0; // Reset wave number
+-        isLoadingNextWave = false; // Reset loading flag
+-        if(player != null && player.getNode() != null)gamePane.getChildren().remove(player.getNode());
+-        player = null;
+-        this.enemyMovementDirection = 1.0;
+-        this.moveDownNextCycle = false;
++        resetInitialStateFlags();
+ 
+         if (bossController != null) {
+             bossController.resetBoss();
+         }
++        System.out.println("GameEntityManager.resetGame(): Abgeschlossen. Kinder in gamePane NACH Reset: " + gamePane.getChildren().size());
++        System.out.println("  enemies.size() NACH Reset: " + enemies.size());
++        System.out.println("  playerProjectiles.size() NACH Reset: " + playerProjectiles.size());
+     }
++
+ 
+     public void removeProjectile(Node projectileNode) {
+-        if (projectileNode != null) {
++        if (projectileNode != null && gamePane.getChildren().contains(projectileNode)) {
+             gamePane.getChildren().remove(projectileNode);
+             if (projectileNode instanceof Rectangle) {
+                 playerProjectiles.remove((Rectangle) projectileNode);
+@@ -237,7 +292,7 @@
+     }
+ 
+     public void removeEnemyNode(Node enemyNode) {
+-        if(enemyNode != null){
++        if(enemyNode != null && gamePane.getChildren().contains(enemyNode)){
+             gamePane.getChildren().remove(enemyNode);
+         }
+     }
+@@ -248,6 +303,7 @@
+         }
+     }
+ 
++    // Getter
+     public Player getPlayer() { return player; }
+     public boolean bossAlreadySpawnedThisCycle(){return this.bossHasSpawnedThisGameCycle;}
+     public List<Enemy> getEnemies() { return enemies; }
+Index: src/main/java/org/example/spaceinvaders/GameUpdater.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package org.example.spaceinvaders;\r\n\r\nimport javafx.animation.PauseTransition;\r\nimport javafx.scene.Node;\r\nimport javafx.scene.media.AudioClip;\r\nimport javafx.scene.shape.Rectangle;\r\nimport javafx.util.Duration;\r\n\r\nimport java.util.ArrayList;\r\nimport java.util.Iterator;\r\nimport java.util.List;\r\n\r\npublic class GameUpdater {\r\n    private GameEntityManager entityManager;\r\n    private InputHandler inputHandler;\r\n    private GameDimensions gameDimensions;\r\n    private UIManager uiManager;\r\n    private MusicalInvaders mainApp;\r\n    private VoiceProfile activeVoiceProfile;\r\n    private long lastShotTime = 0;\r\n\r\n    private double waveTime = 0; // For wave-specific time-based patterns\r\n    private long lastEnemyMoveTimeWave2 = 0;\r\n    private int lastProcessedWaveForTimeReset = 0; // To reset waveTime only once per wave\r\n\r\n    // Store initial positions for Wave 3 (Formation Movement)\r\n    private List<Double> wave3InitialX = new ArrayList<>();\r\n    private List<Double> wave3InitialY = new ArrayList<>();\r\n    private boolean wave3Initialized = false;\r\n\r\n\r\n    public GameUpdater(GameEntityManager entityManager, InputHandler inputHandler,\r\n                       GameDimensions gameDimensions, UIManager uiManager, MusicalInvaders mainApp) {\r\n        this.entityManager = entityManager;\r\n        this.inputHandler = inputHandler;\r\n        this.gameDimensions = gameDimensions;\r\n        this.uiManager = uiManager;\r\n        this.mainApp = mainApp;\r\n        if (this.mainApp != null) {\r\n            this.activeVoiceProfile = this.mainApp.getSelectedVoiceProfile();\r\n        }\r\n    }\r\n\r\n    public void update(long now, double deltaTime) {\r\n        if (mainApp.getCurrentGameState() != GameState.PLAYING) return;\r\n\r\n        updatePlayer(now);\r\n        handlePlayerShooting(now);\r\n        updateProjectiles();\r\n\r\n        BossController bossController = entityManager.getBossController();\r\n\r\n        if (entityManager.isBossActive() && bossController != null) {\r\n            wave3Initialized = false; // Reset wave 3 init if boss becomes active\r\n            bossController.updateBossMovement(now, deltaTime);\r\n        } else if (!entityManager.getEnemies().isEmpty()) {\r\n            updateEnemyMovement(deltaTime, now);\r\n        } else if (entityManager.getEnemies().isEmpty() && !entityManager.isBossActive() && !entityManager.isLoadingNextWave() && !entityManager.wasBossJustDefeated()) {\r\n            wave3Initialized = false; // Reset before spawning next wave\r\n            entityManager.spawnNextWaveOrBoss();\r\n        }\r\n\r\n        checkCollisions(now);\r\n\r\n        if (entityManager.wasBossJustDefeated() && entityManager.getBossEnemy() == null) {\r\n            if (mainApp.getCurrentGameState() == GameState.PLAYING) {\r\n                uiManager.showBossDefeatedMessage();\r\n                PauseTransition delay = new PauseTransition(Duration.seconds(3));\r\n                delay.setOnFinished(event -> mainApp.changeGameState(GameState.CREDITS));\r\n                delay.play();\r\n            }\r\n        }\r\n    }\r\n\r\n    private void updatePlayer(long now) {\r\n        Player player = entityManager.getPlayer();\r\n        if (player == null) return;\r\n        double dx = 0;\r\n        double effectiveSpeed = gameDimensions.getPlayerSpeed();\r\n        if (inputHandler.isMoveLeftPressed()) dx -= effectiveSpeed;\r\n        if (inputHandler.isMoveRightPressed()) dx += effectiveSpeed;\r\n        player.move(dx);\r\n    }\r\n    private void handlePlayerShooting(long now) {\r\n        if (entityManager.getPlayer() == null) return;\r\n        if (inputHandler.isShootingPressed() && (now - lastShotTime) / 1_000_000 >= GameDimensions.SHOOT_COOLDOWN_MS) {\r\n            entityManager.createProjectile();\r\n            lastShotTime = now;\r\n            playSoundEffect(\"player_shoot.wav\");\r\n        }\r\n    }\r\n    private void updateProjectiles() {\r\n        Iterator<Rectangle> iterator = entityManager.getPlayerProjectiles().iterator();\r\n        while (iterator.hasNext()) {\r\n            Rectangle p = iterator.next();\r\n            p.setY(p.getY() - gameDimensions.getProjectileSpeed());\r\n            if (p.getY() + p.getHeight() < 0) {\r\n                iterator.remove();\r\n                entityManager.removeProjectileNode(p);\r\n            }\r\n        }\r\n    }\r\n\r\n    private void updateEnemyMovement(double deltaTime, long now) {\r\n        if (entityManager.isBossActive() || entityManager.getEnemies().isEmpty()) return;\r\n\r\n        int currentWave = entityManager.getCurrentWaveNumber();\r\n\r\n        if (currentWave != lastProcessedWaveForTimeReset) {\r\n            waveTime = 0;\r\n            lastProcessedWaveForTimeReset = currentWave;\r\n            wave3Initialized = false; // Reset for new wave\r\n            System.out.println(\"GameUpdater: Resetting waveTime and wave3Initialized for new wave: \" + currentWave);\r\n        }\r\n\r\n        switch (currentWave % 3) {\r\n            case 1:\r\n                updateBasicMovement(deltaTime);\r\n                break;\r\n            case 2:\r\n                updateAcceleratingMovement(deltaTime, now);\r\n                break;\r\n            case 0:\r\n            default:\r\n                updateFormationMovement(deltaTime, now);\r\n                break;\r\n        }\r\n    }\r\n\r\n    private void updateBasicMovement(double deltaTime) {\r\n        List<Enemy> currentEnemies = entityManager.getEnemies(); if (currentEnemies.isEmpty()) return;\r\n        double currentDirection = entityManager.getEnemyMovementDirection();\r\n        double effectiveSpeedX = entityManager.getEnemyGroupSpeedX(); double effectiveSpeedY = entityManager.getEnemyGroupSpeedY();\r\n        boolean reverseDirectionAndMoveDown = false; double groupLeftMost = Double.MAX_VALUE; double groupRightMost = Double.MIN_VALUE;\r\n        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;\r\n            groupLeftMost = Math.min(groupLeftMost, enemyNode.getLayoutX());\r\n            groupRightMost = Math.max(groupRightMost, enemyNode.getLayoutX() + enemyNode.getBoundsInLocal().getWidth());\r\n        }\r\n        if (currentDirection > 0 && groupRightMost + effectiveSpeedX * deltaTime * 60 > gameDimensions.getWidth()) { // Apply deltaTime\r\n            reverseDirectionAndMoveDown = true;\r\n        } else if (currentDirection < 0 && groupLeftMost + effectiveSpeedX * currentDirection * deltaTime * 60 < 0) { // Apply deltaTime and direction\r\n            reverseDirectionAndMoveDown = true;\r\n        }\r\n\r\n        double dx = effectiveSpeedX * currentDirection * deltaTime * 60; // Apply deltaTime\r\n        double dy = 0;\r\n\r\n        if (reverseDirectionAndMoveDown) {\r\n            entityManager.setEnemyMovementDirection(currentDirection * -1);\r\n            dx = 0; // No horizontal movement on the turn frame\r\n            dy = effectiveSpeedY * deltaTime * 60; // Apply deltaTime\r\n        }\r\n\r\n        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;\r\n            enemyNode.setLayoutX(enemyNode.getLayoutX() + dx);\r\n            enemyNode.setLayoutY(enemyNode.getLayoutY() + dy);\r\n            if (enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight() >= gameDimensions.getHeight() - (gameDimensions.getPlayerHeight() * 0.8)) {\r\n                if (mainApp.getCurrentGameState() == GameState.PLAYING) mainApp.triggerGameOver();\r\n                return;\r\n            }\r\n        }\r\n    }\r\n    private void updateAcceleratingMovement(double deltaTime, long now) {\r\n        List<Enemy> currentEnemies = entityManager.getEnemies(); if (currentEnemies.isEmpty()) return;\r\n        int totalEnemiesAtStart = GameDimensions.ENEMIES_PER_ROW * GameDimensions.ENEMY_ROWS;\r\n        int remainingEnemies = currentEnemies.size();\r\n        double speedMultiplier =(double) totalEnemiesAtStart /remainingEnemies;\r\n        speedMultiplier = Math.min(speedMultiplier, 4.0); // Cap speed multiplier\r\n\r\n        // The step interval should be dependent on deltaTime to ensure smooth movement across different frame rates\r\n        // However, this pattern is inherently step-based. We keep the stepIntervalNanos for the \"tick\"\r\n        // but apply movement more smoothly if possible, or just use the tick.\r\n        // For simplicity, let's keep it tick-based for now as it was.\r\n        long stepIntervalNanos = (long) (600_000_000 / speedMultiplier);\r\n\r\n        if (now - lastEnemyMoveTimeWave2 < stepIntervalNanos) return;\r\n        lastEnemyMoveTimeWave2 = now;\r\n\r\n        double currentDirection = entityManager.getEnemyMovementDirection();\r\n        // Step sizes are fixed per \"tick\"\r\n        double stepSizeX = entityManager.getEnemyGroupSpeedX() * 8 * speedMultiplier; // Größere Schritte\r\n        double stepSizeY = entityManager.getEnemyGroupSpeedY() * 1.5;\r\n\r\n        boolean reverseDirectionAndMoveDown = false;\r\n        double groupLeftMost = Double.MAX_VALUE;\r\n        double groupRightMost = Double.MIN_VALUE;\r\n\r\n        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;\r\n            groupLeftMost = Math.min(groupLeftMost, enemyNode.getLayoutX());\r\n            groupRightMost = Math.max(groupRightMost, enemyNode.getLayoutX() + enemyNode.getBoundsInLocal().getWidth());\r\n        }\r\n\r\n        if (currentDirection > 0 && groupRightMost + stepSizeX > gameDimensions.getWidth()) {\r\n            reverseDirectionAndMoveDown = true;\r\n        } else if (currentDirection < 0 && groupLeftMost - stepSizeX < 0) {\r\n            reverseDirectionAndMoveDown = true;\r\n        }\r\n\r\n        double dx = 0;\r\n        double dy = 0;\r\n\r\n        if (reverseDirectionAndMoveDown) {\r\n            entityManager.setEnemyMovementDirection(currentDirection * -1);\r\n            dy = stepSizeY; // Move down on the turn\r\n        } else {\r\n            dx = stepSizeX * currentDirection; // Move sideways\r\n        }\r\n\r\n        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;\r\n            enemyNode.setLayoutX(enemyNode.getLayoutX() + dx);\r\n            enemyNode.setLayoutY(enemyNode.getLayoutY() + dy);\r\n            if (enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight() >= gameDimensions.getHeight() - (gameDimensions.getPlayerHeight() * 0.8)) {\r\n                if (mainApp.getCurrentGameState() == GameState.PLAYING) mainApp.triggerGameOver();\r\n                return;\r\n            }\r\n        }\r\n    }\r\n\r\n    private void updateFormationMovement(double deltaTime, long now) {\r\n        waveTime += deltaTime * 2.5; // Wellenbewegungszeit\r\n\r\n        List<Enemy> currentEnemies = entityManager.getEnemies();\r\n        if (currentEnemies.isEmpty()) return;\r\n\r\n        // Konstante Abwärtsbewegung für alle Gegner\r\n        double constantDownwardSpeed = entityManager.getEnemyGroupSpeedY() * 0.02;\r\n\r\n        // Wellenbewegung für horizontale Position\r\n        final double WAVE_AMPLITUDE = 200.0; // Wie stark die Welle ausschlägt\r\n        final double WAVE_FREQUENCY = 3;   // Wie schnell die Welle oszilliert\r\n\r\n        int enemyIndex = 0;\r\n        int totalEnemiesPerRow = GameDimensions.ENEMIES_PER_ROW;\r\n\r\n        for (Enemy enemy : currentEnemies) {\r\n            Node enemyNode = enemy.getNode();\r\n            if (enemyNode == null) continue;\r\n\r\n            // Berechne Reihe und Spalte des Gegners\r\n            int row = enemyIndex / totalEnemiesPerRow;\r\n            int col = enemyIndex % totalEnemiesPerRow;\r\n\r\n            // Jede Reihe hat eine etwas andere Wellenphase\r\n            double rowPhaseOffset = row * 0.8;\r\n            double colPhaseOffset = col * 0.3;\r\n\r\n            // Berechne die Wellenbewegung\r\n            double waveOffset = Math.sin((waveTime + rowPhaseOffset + colPhaseOffset) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;\r\n\r\n            // Grundposition: Mittig im Bildschirm + Wellenversatz\r\n            double centerX = gameDimensions.getWidth() / 2;\r\n            double baseX = centerX - (totalEnemiesPerRow * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX())) / 2;\r\n            double targetX = baseX + col * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX()) + waveOffset;\r\n\r\n            // Begrenze die horizontale Bewegung auf den Bildschirm\r\n            targetX = Math.max(10, Math.min(targetX, gameDimensions.getWidth() - gameDimensions.getEnemyWidth() - 10));\r\n\r\n            // Setze neue Position\r\n            enemyNode.setLayoutX(targetX);\r\n\r\n            // Konstante Abwärtsbewegung\r\n            double newY = enemyNode.getLayoutY() + (constantDownwardSpeed * deltaTime * 60);\r\n            enemyNode.setLayoutY(newY);\r\n\r\n            // Game Over Prüfung\r\n            if (newY + enemyNode.getBoundsInLocal().getHeight() >=\r\n                    gameDimensions.getHeight() - (gameDimensions.getPlayerHeight() * 0.8)) {\r\n                mainApp.triggerGameOver();\r\n                return;\r\n            }\r\n\r\n            enemyIndex++;\r\n        }\r\n    }\r\n\r\n\r\n\r\n    private void checkCollisions(long now) {\r\n        Player player = entityManager.getPlayer();\r\n        if (player == null || player.getNode() == null) return;\r\n\r\n        BossController bossController = entityManager.getBossController();\r\n        Iterator<Rectangle> projIterator = entityManager.getPlayerProjectiles().iterator();\r\n\r\n        while (projIterator.hasNext()) {\r\n            Rectangle projectile = projIterator.next();\r\n            boolean projectileRemovedInThisIteration = false;\r\n\r\n            if (entityManager.isBossActive() && bossController != null && entityManager.getBossEnemy() != null) {\r\n                Enemy currentBossEntity = entityManager.getBossEnemy();\r\n                if (currentBossEntity.getNode() != null) {\r\n                    boolean isIntersecting = projectile.getBoundsInParent().intersects(currentBossEntity.getNode().getBoundsInParent());\r\n                    boolean isBossRetreating = bossController.isBossRetreating();\r\n\r\n                    if (isIntersecting && !isBossRetreating) {\r\n                        bossController.bossTakeHit();\r\n                        playSoundEffect(\"enemy_hit.wav\");\r\n\r\n                        Enemy bossAfterHit = entityManager.getBossEnemy();\r\n                        if (bossAfterHit != null && !bossAfterHit.isAlive() && bossController.getBossPhase() >= 3) {\r\n                            uiManager.addScore(currentBossEntity.getPoints());\r\n                            playSoundEffect(\"boss_explosion.wav\");\r\n                            entityManager.bossDefeated();\r\n                        }\r\n                        projIterator.remove();\r\n                        entityManager.removeProjectileNode(projectile);\r\n                        projectileRemovedInThisIteration = true;\r\n                    }\r\n                }\r\n\r\n                if (!projectileRemovedInThisIteration && bossController.isBossRetreating() && !bossController.getMinionEnemies().isEmpty()) {\r\n                    List<Rectangle> singleProjectileList = new ArrayList<>();\r\n                    singleProjectileList.add(projectile);\r\n                    if (bossController.checkPlayerProjectileVsMinionCollisions(singleProjectileList, uiManager)) {\r\n                        playSoundEffect(\"enemy_hit.wav\");\r\n                        projIterator.remove(); // Projectile node removal handled by bossController\r\n                        // projectileRemovedInThisIteration = true; // Already handled by the fact that projIterator.remove() is called\r\n                    }\r\n                }\r\n\r\n            } else if (!projectileRemovedInThisIteration && !entityManager.getEnemies().isEmpty()) {\r\n                Iterator<Enemy> enemyIterator = entityManager.getEnemies().iterator();\r\n                while (enemyIterator.hasNext()) {\r\n                    Enemy enemy = enemyIterator.next();\r\n                    if (enemy.getNode() != null && projectile.getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {\r\n                        enemy.takeHit(); playSoundEffect(\"enemy_hit.wav\");\r\n                        if (!enemy.isAlive()) {\r\n                            enemyIterator.remove(); entityManager.removeEnemyNode(enemy.getNode());\r\n                            uiManager.addScore(enemy.getPoints()); playSoundEffect(\"enemy_explosion.wav\");\r\n                        }\r\n                        projIterator.remove(); entityManager.removeProjectileNode(projectile);\r\n                        // projectileRemovedInThisIteration = true; // No need, break immediately\r\n                        break; // Projectile is used, exit inner loop\r\n                    }\r\n                }\r\n            }\r\n        }\r\n\r\n        if (entityManager.isBossActive() && bossController != null) {\r\n            if (bossController.checkBossProjectileCollisions(player)) {\r\n                handlePlayerDeath(); return;\r\n            }\r\n        }\r\n\r\n        if (entityManager.isBossActive() && bossController != null && entityManager.getBossEnemy() != null) {\r\n            Enemy currentBossEntity = entityManager.getBossEnemy();\r\n            if (currentBossEntity.getNode() != null && !bossController.isBossRetreating() &&\r\n                    player.getNode().getBoundsInParent().intersects(currentBossEntity.getNode().getBoundsInParent())) {\r\n                handlePlayerDeath(); return;\r\n            }\r\n            if (bossController.isBossRetreating() && bossController.checkPlayerVsMinionCollisions(player)) {\r\n                handlePlayerDeath(); return;\r\n            }\r\n        } else if (!entityManager.getEnemies().isEmpty()) {\r\n            for (Enemy enemy : new ArrayList<>(entityManager.getEnemies())) { // Iterate copy for safety if player dies\r\n                if (enemy.getNode() != null && player.getNode().getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {\r\n                    handlePlayerDeath(); return;\r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\n    private void handlePlayerDeath() {\r\n        Player player = entityManager.getPlayer(); if (player == null) return;\r\n        if (mainApp.getCurrentGameState() == GameState.PLAYING) {\r\n            playSoundEffect(\"player_explosion.wav\");\r\n            mainApp.triggerGameOver();\r\n        }\r\n    }\r\n    private void playSoundEffect(String sfxFileName) {\r\n        if (activeVoiceProfile != null && activeVoiceProfile.getSfxFolderPath() != null) {\r\n            String sfxPath = activeVoiceProfile.getSfxFolderPath();\r\n            if (!sfxPath.endsWith(\"/\")) sfxPath += \"/\";\r\n            String fullSfxPath = sfxPath.startsWith(\"/\") ? sfxPath : \"/\" + sfxPath;\r\n            fullSfxPath += sfxFileName;\r\n            try {\r\n                String resourceUrl = getClass().getResource(fullSfxPath).toExternalForm();\r\n                if (resourceUrl == null) {\r\n                    System.err.println(\"SFX Resource URL is null for: \" + fullSfxPath);\r\n                    return;\r\n                }\r\n                AudioClip clip = new AudioClip(resourceUrl);\r\n                clip.play();\r\n            } catch (NullPointerException npe) {\r\n                System.err.println(\"SFX Resource not found (NullPointerException): \" + fullSfxPath + \" - \" + npe.getMessage());\r\n            } catch (Exception e) {\r\n                System.err.println(\"SFX Error loading: \" + fullSfxPath + \" - \" + e.getClass().getSimpleName() + \": \" + e.getMessage());\r\n            }\r\n        }\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/org/example/spaceinvaders/GameUpdater.java b/src/main/java/org/example/spaceinvaders/GameUpdater.java
+--- a/src/main/java/org/example/spaceinvaders/GameUpdater.java	(revision 3764d5dcda23f9c1b182cde0985a4824e9b442d1)
++++ b/src/main/java/org/example/spaceinvaders/GameUpdater.java	(date 1749415550537)
+@@ -2,7 +2,6 @@
+ 
+ import javafx.animation.PauseTransition;
+ import javafx.scene.Node;
+-import javafx.scene.media.AudioClip;
+ import javafx.scene.shape.Rectangle;
+ import javafx.util.Duration;
+ 
+@@ -16,29 +15,23 @@
+     private GameDimensions gameDimensions;
+     private UIManager uiManager;
+     private MusicalInvaders mainApp;
+-    private VoiceProfile activeVoiceProfile;
++    private SoundManager soundManager;
+     private long lastShotTime = 0;
+ 
+-    private double waveTime = 0; // For wave-specific time-based patterns
++    private double waveTime = 0;
+     private long lastEnemyMoveTimeWave2 = 0;
+-    private int lastProcessedWaveForTimeReset = 0; // To reset waveTime only once per wave
+-
+-    // Store initial positions for Wave 3 (Formation Movement)
+-    private List<Double> wave3InitialX = new ArrayList<>();
+-    private List<Double> wave3InitialY = new ArrayList<>();
++    private int lastProcessedWaveForTimeReset = 0;
+     private boolean wave3Initialized = false;
+ 
+ 
+     public GameUpdater(GameEntityManager entityManager, InputHandler inputHandler,
+-                       GameDimensions gameDimensions, UIManager uiManager, MusicalInvaders mainApp) {
++                       GameDimensions gameDimensions, UIManager uiManager, MusicalInvaders mainApp, SoundManager soundManager) {
+         this.entityManager = entityManager;
+         this.inputHandler = inputHandler;
+         this.gameDimensions = gameDimensions;
+         this.uiManager = uiManager;
+         this.mainApp = mainApp;
+-        if (this.mainApp != null) {
+-            this.activeVoiceProfile = this.mainApp.getSelectedVoiceProfile();
+-        }
++        this.soundManager = soundManager;
+     }
+ 
+     public void update(long now, double deltaTime) {
+@@ -51,12 +44,12 @@
+         BossController bossController = entityManager.getBossController();
+ 
+         if (entityManager.isBossActive() && bossController != null) {
+-            wave3Initialized = false; // Reset wave 3 init if boss becomes active
++            wave3Initialized = false;
+             bossController.updateBossMovement(now, deltaTime);
+         } else if (!entityManager.getEnemies().isEmpty()) {
+             updateEnemyMovement(deltaTime, now);
+         } else if (entityManager.getEnemies().isEmpty() && !entityManager.isBossActive() && !entityManager.isLoadingNextWave() && !entityManager.wasBossJustDefeated()) {
+-            wave3Initialized = false; // Reset before spawning next wave
++            wave3Initialized = false;
+             entityManager.spawnNextWaveOrBoss();
+         }
+ 
+@@ -74,7 +67,9 @@
+ 
+     private void updatePlayer(long now) {
+         Player player = entityManager.getPlayer();
+-        if (player == null) return;
++        if (player == null) {
++            return;
++        }
+         double dx = 0;
+         double effectiveSpeed = gameDimensions.getPlayerSpeed();
+         if (inputHandler.isMoveLeftPressed()) dx -= effectiveSpeed;
+@@ -86,9 +81,12 @@
+         if (inputHandler.isShootingPressed() && (now - lastShotTime) / 1_000_000 >= GameDimensions.SHOOT_COOLDOWN_MS) {
+             entityManager.createProjectile();
+             lastShotTime = now;
+-            playSoundEffect("player_shoot.wav");
++            if (soundManager != null) {
++                soundManager.playPlayerShoot();
++            }
+         }
+     }
++
+     private void updateProjectiles() {
+         Iterator<Rectangle> iterator = entityManager.getPlayerProjectiles().iterator();
+         while (iterator.hasNext()) {
+@@ -109,76 +107,116 @@
+         if (currentWave != lastProcessedWaveForTimeReset) {
+             waveTime = 0;
+             lastProcessedWaveForTimeReset = currentWave;
+-            wave3Initialized = false; // Reset for new wave
+-            System.out.println("GameUpdater: Resetting waveTime and wave3Initialized for new wave: " + currentWave);
++            wave3Initialized = false;
+         }
+ 
+-        switch (currentWave % 3) {
+-            case 1:
+-                updateBasicMovement(deltaTime);
+-                break;
+-            case 2:
+-                updateAcceleratingMovement(deltaTime, now);
+-                break;
+-            case 0:
+-            default:
+-                updateFormationMovement(deltaTime, now);
+-                break;
++        // Annahme: Welle 1 ist immer updateBasicMovementOriginal
++        // Wenn nicht, musst du die Logs auch in die anderen Methoden einfügen.
++        if (currentWave == 1 || (currentWave > 0 && currentWave % 3 == 1) ) { // Für Welle 1, 4, 7...
++            updateBasicMovementOriginal(deltaTime);
++        } else if (currentWave > 0 && currentWave % 3 == 2) { // Für Welle 2, 5, 8...
++            updateAcceleratingMovementOriginal(now);
++        } else if (currentWave > 0 && currentWave % 3 == 0) { // Für Welle 3, 6, 9...
++            updateFormationMovementOriginal(deltaTime, now);
++        } else {
++            // Fallback oder für Welle 0, falls das möglich ist (sollte durch currentWave=1 Start vermieden werden)
++            updateBasicMovementOriginal(deltaTime);
+         }
+     }
+ 
+-    private void updateBasicMovement(double deltaTime) {
+-        List<Enemy> currentEnemies = entityManager.getEnemies(); if (currentEnemies.isEmpty()) return;
++    // HIER SIND DIE LOGS EINGEFÜGT
++    private void updateBasicMovementOriginal(double deltaTime) {
++        List<Enemy> currentEnemies = entityManager.getEnemies();
++        if (currentEnemies.isEmpty()) return;
++
+         double currentDirection = entityManager.getEnemyMovementDirection();
+-        double effectiveSpeedX = entityManager.getEnemyGroupSpeedX(); double effectiveSpeedY = entityManager.getEnemyGroupSpeedY();
+-        boolean reverseDirectionAndMoveDown = false; double groupLeftMost = Double.MAX_VALUE; double groupRightMost = Double.MIN_VALUE;
+-        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;
++        double effectiveSpeedX = entityManager.getEnemyGroupSpeedX();
++        double effectiveSpeedY = entityManager.getEnemyGroupSpeedY();
++        boolean reverseDirectionAndMoveDown = false;
++        double groupLeftMost = Double.MAX_VALUE;
++        double groupRightMost = Double.MIN_VALUE;
++
++        for (Enemy enemy : currentEnemies) {
++            Node enemyNode = enemy.getNode();
++            if (enemyNode == null) continue;
+             groupLeftMost = Math.min(groupLeftMost, enemyNode.getLayoutX());
+             groupRightMost = Math.max(groupRightMost, enemyNode.getLayoutX() + enemyNode.getBoundsInLocal().getWidth());
+         }
+-        if (currentDirection > 0 && groupRightMost + effectiveSpeedX * deltaTime * 60 > gameDimensions.getWidth()) { // Apply deltaTime
++
++        // Bewegung basierend auf deltaTime * 60 Skalierung, wie es ursprünglich war
++        double moveXThisFrameForCheck = effectiveSpeedX * deltaTime * 60.0;
++        if (moveXThisFrameForCheck == 0 && effectiveSpeedX != 0) moveXThisFrameForCheck = effectiveSpeedX * currentDirection; // Fallback bei deltaTime=0
++
++
++        if (currentDirection > 0 && groupRightMost + moveXThisFrameForCheck > gameDimensions.getWidth()) {
+             reverseDirectionAndMoveDown = true;
+-        } else if (currentDirection < 0 && groupLeftMost + effectiveSpeedX * currentDirection * deltaTime * 60 < 0) { // Apply deltaTime and direction
++        } else if (currentDirection < 0 && groupLeftMost - moveXThisFrameForCheck < 0) { // Korrigiert zu - moveXThisFrameForCheck
+             reverseDirectionAndMoveDown = true;
+         }
+ 
+-        double dx = effectiveSpeedX * currentDirection * deltaTime * 60; // Apply deltaTime
++        double dx = 0;
+         double dy = 0;
+ 
+         if (reverseDirectionAndMoveDown) {
+             entityManager.setEnemyMovementDirection(currentDirection * -1);
+-            dx = 0; // No horizontal movement on the turn frame
+-            dy = effectiveSpeedY * deltaTime * 60; // Apply deltaTime
++            dy = effectiveSpeedY * deltaTime * 60.0; // Skalierte Bewegung nach unten
++            if (dy == 0 && effectiveSpeedY != 0) dy = effectiveSpeedY; // Fallback bei deltaTime=0
++        } else {
++            dx = effectiveSpeedX * currentDirection * deltaTime * 60.0; // Skalierte seitliche Bewegung
++            if (dx == 0 && effectiveSpeedX != 0) dx = effectiveSpeedX * currentDirection; // Fallback
+         }
+ 
+-        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;
++        for (Enemy enemy : currentEnemies) {
++            Node enemyNode = enemy.getNode();
++            if (enemyNode == null) continue;
++
+             enemyNode.setLayoutX(enemyNode.getLayoutX() + dx);
+             enemyNode.setLayoutY(enemyNode.getLayoutY() + dy);
+-            if (enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight() >= gameDimensions.getHeight() - (gameDimensions.getPlayerHeight() * 0.8)) {
+-                if (mainApp.getCurrentGameState() == GameState.PLAYING) mainApp.triggerGameOver();
+-                return;
++
++            // **** LOGGING HIER EINFÜGEN ****
++            double enemyBottomY = enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight();
++            double playerHeightForGameOver = gameDimensions.getPlayerHeight(); // Sicherstellen, dass dieser Wert aktuell ist
++            if (playerHeightForGameOver <=0 && entityManager.getPlayer() != null) playerHeightForGameOver = entityManager.getPlayer().getHeight();
++            if (playerHeightForGameOver <=0) playerHeightForGameOver = 30; // Absoluter Fallback
++
++            double gameOverLine = gameDimensions.getHeight() - (playerHeightForGameOver * 0.8);
++
++            if (enemyBottomY >= gameOverLine) {
++                System.out.println("!!! GAME OVER TRIGGER durch Gegner am unteren Rand (updateBasicMovementOriginal) !!!");
++                System.out.println("  Gegner: " + enemy + " (Hash: " + enemy.hashCode() + ")");
++                System.out.println("  enemyNode.getLayoutX() = " + enemyNode.getLayoutX());
++                System.out.println("  enemyNode.getLayoutY() = " + enemyNode.getLayoutY());
++                System.out.println("  enemyNode.getHeight() = " + enemyNode.getBoundsInLocal().getHeight());
++                System.out.println("  enemyBottomY = " + enemyBottomY);
++                System.out.println("  gameDimensions.getHeight() = " + gameDimensions.getHeight());
++                System.out.println("  playerHeightForGameOver = " + playerHeightForGameOver);
++                System.out.println("  gameOverLine = " + gameOverLine);
++                System.out.println("  deltaTime = " + deltaTime + ", dx=" + dx + ", dy=" + dy);
++
++
++                if (mainApp.getCurrentGameState() == GameState.PLAYING) {
++                    mainApp.triggerGameOver();
++                }
++                return; // Wichtig, um die Schleife zu verlassen und nicht weitere Gegner zu prüfen/bewegen
+             }
++            // **** ENDE LOGGING ****
+         }
+     }
+-    private void updateAcceleratingMovement(double deltaTime, long now) {
++
++    private void updateAcceleratingMovementOriginal(long now) {
+         List<Enemy> currentEnemies = entityManager.getEnemies(); if (currentEnemies.isEmpty()) return;
+         int totalEnemiesAtStart = GameDimensions.ENEMIES_PER_ROW * GameDimensions.ENEMY_ROWS;
+         int remainingEnemies = currentEnemies.size();
+-        double speedMultiplier =(double) totalEnemiesAtStart /remainingEnemies;
+-        speedMultiplier = Math.min(speedMultiplier, 4.0); // Cap speed multiplier
++        double speedMultiplier = Math.max(1.0, (double) totalEnemiesAtStart / Math.max(1, remainingEnemies));
++        speedMultiplier = Math.min(speedMultiplier, 4.0);
+ 
+-        // The step interval should be dependent on deltaTime to ensure smooth movement across different frame rates
+-        // However, this pattern is inherently step-based. We keep the stepIntervalNanos for the "tick"
+-        // but apply movement more smoothly if possible, or just use the tick.
+-        // For simplicity, let's keep it tick-based for now as it was.
+         long stepIntervalNanos = (long) (600_000_000 / speedMultiplier);
+ 
+         if (now - lastEnemyMoveTimeWave2 < stepIntervalNanos) return;
+         lastEnemyMoveTimeWave2 = now;
+ 
+         double currentDirection = entityManager.getEnemyMovementDirection();
+-        // Step sizes are fixed per "tick"
+-        double stepSizeX = entityManager.getEnemyGroupSpeedX() * 8 * speedMultiplier; // Größere Schritte
++        double stepSizeX = entityManager.getEnemyGroupSpeedX() * 8 * speedMultiplier;
+         double stepSizeY = entityManager.getEnemyGroupSpeedY() * 1.5;
+ 
+         boolean reverseDirectionAndMoveDown = false;
+@@ -201,33 +239,42 @@
+ 
+         if (reverseDirectionAndMoveDown) {
+             entityManager.setEnemyMovementDirection(currentDirection * -1);
+-            dy = stepSizeY; // Move down on the turn
++            dy = stepSizeY;
+         } else {
+-            dx = stepSizeX * currentDirection; // Move sideways
++            dx = stepSizeX * currentDirection;
+         }
+ 
+         for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;
+             enemyNode.setLayoutX(enemyNode.getLayoutX() + dx);
+             enemyNode.setLayoutY(enemyNode.getLayoutY() + dy);
+-            if (enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight() >= gameDimensions.getHeight() - (gameDimensions.getPlayerHeight() * 0.8)) {
++
++            // **** LOGGING HIER EINFÜGEN (ähnlich wie oben) ****
++            double enemyBottomY = enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight();
++            double playerHeightForGameOver = gameDimensions.getPlayerHeight();
++            if (playerHeightForGameOver <=0 && entityManager.getPlayer() != null) playerHeightForGameOver = entityManager.getPlayer().getHeight();
++            if (playerHeightForGameOver <=0) playerHeightForGameOver = 30;
++
++            double gameOverLine = gameDimensions.getHeight() - (playerHeightForGameOver * 0.8);
++            if (enemyBottomY >= gameOverLine) {
++                System.out.println("!!! GAME OVER TRIGGER durch Gegner am unteren Rand (updateAcceleratingMovementOriginal) !!!");
++                // ... (detaillierte Logs wie oben)
+                 if (mainApp.getCurrentGameState() == GameState.PLAYING) mainApp.triggerGameOver();
+                 return;
+             }
++            // **** ENDE LOGGING ****
+         }
+     }
+ 
+-    private void updateFormationMovement(double deltaTime, long now) {
+-        waveTime += deltaTime * 2.5; // Wellenbewegungszeit
++    private void updateFormationMovementOriginal(double deltaTime, long now) {
++        waveTime += deltaTime * 2.5;
+ 
+         List<Enemy> currentEnemies = entityManager.getEnemies();
+         if (currentEnemies.isEmpty()) return;
+ 
+-        // Konstante Abwärtsbewegung für alle Gegner
+         double constantDownwardSpeed = entityManager.getEnemyGroupSpeedY() * 0.02;
+ 
+-        // Wellenbewegung für horizontale Position
+-        final double WAVE_AMPLITUDE = 200.0; // Wie stark die Welle ausschlägt
+-        final double WAVE_FREQUENCY = 3;   // Wie schnell die Welle oszilliert
++        final double WAVE_AMPLITUDE = 200.0;
++        final double WAVE_FREQUENCY = 3;
+ 
+         int enemyIndex = 0;
+         int totalEnemiesPerRow = GameDimensions.ENEMIES_PER_ROW;
+@@ -236,156 +283,161 @@
+             Node enemyNode = enemy.getNode();
+             if (enemyNode == null) continue;
+ 
+-            // Berechne Reihe und Spalte des Gegners
+             int row = enemyIndex / totalEnemiesPerRow;
+             int col = enemyIndex % totalEnemiesPerRow;
+-
+-            // Jede Reihe hat eine etwas andere Wellenphase
+             double rowPhaseOffset = row * 0.8;
+             double colPhaseOffset = col * 0.3;
+-
+-            // Berechne die Wellenbewegung
+             double waveOffset = Math.sin((waveTime + rowPhaseOffset + colPhaseOffset) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
+ 
+-            // Grundposition: Mittig im Bildschirm + Wellenversatz
+             double centerX = gameDimensions.getWidth() / 2;
+             double baseX = centerX - (totalEnemiesPerRow * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX())) / 2;
+             double targetX = baseX + col * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX()) + waveOffset;
+-
+-            // Begrenze die horizontale Bewegung auf den Bildschirm
+             targetX = Math.max(10, Math.min(targetX, gameDimensions.getWidth() - gameDimensions.getEnemyWidth() - 10));
+-
+-            // Setze neue Position
+             enemyNode.setLayoutX(targetX);
+ 
+-            // Konstante Abwärtsbewegung
+-            double newY = enemyNode.getLayoutY() + (constantDownwardSpeed * deltaTime * 60);
++            double downwardMovementThisFrame = constantDownwardSpeed * deltaTime * 60.0;
++            if (downwardMovementThisFrame == 0 && constantDownwardSpeed != 0) downwardMovementThisFrame = constantDownwardSpeed; // Fallback
++
++            double newY = enemyNode.getLayoutY() + downwardMovementThisFrame;
+             enemyNode.setLayoutY(newY);
+ 
+-            // Game Over Prüfung
+-            if (newY + enemyNode.getBoundsInLocal().getHeight() >=
+-                    gameDimensions.getHeight() - (gameDimensions.getPlayerHeight() * 0.8)) {
+-                mainApp.triggerGameOver();
++            // **** LOGGING HIER EINFÜGEN (ähnlich wie oben) ****
++            double enemyBottomY = newY + enemyNode.getBoundsInLocal().getHeight(); // newY verwenden
++            double playerHeightForGameOver = gameDimensions.getPlayerHeight();
++            if (playerHeightForGameOver <=0 && entityManager.getPlayer() != null) playerHeightForGameOver = entityManager.getPlayer().getHeight();
++            if (playerHeightForGameOver <=0) playerHeightForGameOver = 30;
++
++            double gameOverLine = gameDimensions.getHeight() - (playerHeightForGameOver * 0.8);
++            if (enemyBottomY >= gameOverLine) {
++                System.out.println("!!! GAME OVER TRIGGER durch Gegner am unteren Rand (updateFormationMovementOriginal) !!!");
++                // ... (detaillierte Logs wie oben, verwende newY für die Y-Position des Gegners)
++                if (mainApp.getCurrentGameState() == GameState.PLAYING) mainApp.triggerGameOver();
+                 return;
+             }
+-
++            // **** ENDE LOGGING ****
+             enemyIndex++;
+         }
+     }
+ 
+ 
+-
+     private void checkCollisions(long now) {
+         Player player = entityManager.getPlayer();
+-        if (player == null || player.getNode() == null) return;
++        if (player == null || player.getNode() == null) {
++            return;
++        }
+ 
+         BossController bossController = entityManager.getBossController();
+         Iterator<Rectangle> projIterator = entityManager.getPlayerProjectiles().iterator();
+ 
+         while (projIterator.hasNext()) {
+             Rectangle projectile = projIterator.next();
+-            boolean projectileRemovedInThisIteration = false;
++            boolean projectileUsedThisHit = false;
+ 
+             if (entityManager.isBossActive() && bossController != null && entityManager.getBossEnemy() != null) {
+                 Enemy currentBossEntity = entityManager.getBossEnemy();
+                 if (currentBossEntity.getNode() != null) {
+                     boolean isIntersecting = projectile.getBoundsInParent().intersects(currentBossEntity.getNode().getBoundsInParent());
+-                    boolean isBossRetreating = bossController.isBossRetreating();
+ 
+-                    if (isIntersecting && !isBossRetreating) {
++                    if (isIntersecting && !bossController.isBossRetreating()) {
++                        // System.out.println("KOLLISION: Spieler-Projektil vs Boss-Körper"); // Bereits vorhanden
+                         bossController.bossTakeHit();
+-                        playSoundEffect("enemy_hit.wav");
+-
+                         Enemy bossAfterHit = entityManager.getBossEnemy();
+-                        if (bossAfterHit != null && !bossAfterHit.isAlive() && bossController.getBossPhase() >= 3) {
+-                            uiManager.addScore(currentBossEntity.getPoints());
+-                            playSoundEffect("boss_explosion.wav");
+-                            entityManager.bossDefeated();
++                        if (bossAfterHit != null && !bossAfterHit.isAlive()) {
++                            if (bossController.getBossPhase() >= 3) {
++                                uiManager.addScore(currentBossEntity.getPoints());
++                                if (soundManager != null) soundManager.playBossFinalDefeat();
++                                entityManager.bossDefeated();
++                            }
++                        } else if (bossAfterHit != null) {
++                            if (soundManager != null) soundManager.playEnemyHit();
+                         }
+-                        projIterator.remove();
+-                        entityManager.removeProjectileNode(projectile);
+-                        projectileRemovedInThisIteration = true;
++                        projectileUsedThisHit = true;
+                     }
+                 }
+-
+-                if (!projectileRemovedInThisIteration && bossController.isBossRetreating() && !bossController.getMinionEnemies().isEmpty()) {
++                if (!projectileUsedThisHit && bossController.isBossRetreating() && !bossController.getMinionEnemies().isEmpty()) {
+                     List<Rectangle> singleProjectileList = new ArrayList<>();
+                     singleProjectileList.add(projectile);
+                     if (bossController.checkPlayerProjectileVsMinionCollisions(singleProjectileList, uiManager)) {
+-                        playSoundEffect("enemy_hit.wav");
+-                        projIterator.remove(); // Projectile node removal handled by bossController
+-                        // projectileRemovedInThisIteration = true; // Already handled by the fact that projIterator.remove() is called
++                        // System.out.println("KOLLISION: Spieler-Projektil vs Minion (Boss retreating)"); // Bereits vorhanden
++                        if (soundManager != null) soundManager.playEnemyHit();
++                        projectileUsedThisHit = true;
+                     }
+                 }
+-
+-            } else if (!projectileRemovedInThisIteration && !entityManager.getEnemies().isEmpty()) {
++            }
++            else if (!entityManager.getEnemies().isEmpty()) {
+                 Iterator<Enemy> enemyIterator = entityManager.getEnemies().iterator();
+                 while (enemyIterator.hasNext()) {
+                     Enemy enemy = enemyIterator.next();
+                     if (enemy.getNode() != null && projectile.getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {
+-                        enemy.takeHit(); playSoundEffect("enemy_hit.wav");
++                        // System.out.println("KOLLISION: Spieler-Projektil vs Normaler Gegner (" + enemy + ")"); // Bereits vorhanden
++                        enemy.takeHit();
++                        if (soundManager != null) soundManager.playEnemyHit();
++
+                         if (!enemy.isAlive()) {
+-                            enemyIterator.remove(); entityManager.removeEnemyNode(enemy.getNode());
+-                            uiManager.addScore(enemy.getPoints()); playSoundEffect("enemy_explosion.wav");
++                            enemyIterator.remove();
++                            entityManager.removeEnemyNode(enemy.getNode());
++                            uiManager.addScore(enemy.getPoints());
+                         }
+-                        projIterator.remove(); entityManager.removeProjectileNode(projectile);
+-                        // projectileRemovedInThisIteration = true; // No need, break immediately
+-                        break; // Projectile is used, exit inner loop
++                        projectileUsedThisHit = true;
++                        break;
+                     }
+                 }
+             }
++
++            if (projectileUsedThisHit) {
++                projIterator.remove();
++                entityManager.removeProjectileNode(projectile);
++            }
+         }
++
++        boolean playerHitSomething = false;
++        String hitReason = "Unbekannt";
+ 
+         if (entityManager.isBossActive() && bossController != null) {
+             if (bossController.checkBossProjectileCollisions(player)) {
+-                handlePlayerDeath(); return;
++                hitReason = "Spieler vs Boss-Projektil";
++                playerHitSomething = true;
+             }
+-        }
+-
+-        if (entityManager.isBossActive() && bossController != null && entityManager.getBossEnemy() != null) {
+-            Enemy currentBossEntity = entityManager.getBossEnemy();
+-            if (currentBossEntity.getNode() != null && !bossController.isBossRetreating() &&
+-                    player.getNode().getBoundsInParent().intersects(currentBossEntity.getNode().getBoundsInParent())) {
+-                handlePlayerDeath(); return;
++            if (!playerHitSomething && entityManager.getBossEnemy() != null &&
++                    entityManager.getBossEnemy().getNode() != null &&
++                    !bossController.isBossRetreating() &&
++                    player.getNode().getBoundsInParent().intersects(entityManager.getBossEnemy().getNode().getBoundsInParent())) {
++                hitReason = "Spieler vs Boss-Körper";
++                playerHitSomething = true;
+             }
+-            if (bossController.isBossRetreating() && bossController.checkPlayerVsMinionCollisions(player)) {
+-                handlePlayerDeath(); return;
++            if (!playerHitSomething && bossController.isBossRetreating() && bossController.checkPlayerVsMinionCollisions(player)) {
++                hitReason = "Spieler vs Minion (Boss retreating)";
++                playerHitSomething = true;
+             }
+         } else if (!entityManager.getEnemies().isEmpty()) {
+-            for (Enemy enemy : new ArrayList<>(entityManager.getEnemies())) { // Iterate copy for safety if player dies
++            for (Enemy enemy : new ArrayList<>(entityManager.getEnemies())) {
+                 if (enemy.getNode() != null && player.getNode().getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {
+-                    handlePlayerDeath(); return;
++                    hitReason = "Spieler vs Normaler Gegner (" + enemy + ") an Pos: " + enemy.getNode().getLayoutX() + "," + enemy.getNode().getLayoutY();
++                    playerHitSomething = true;
++                    break;
+                 }
+             }
+         }
++
++        if (playerHitSomething) {
++            // System.out.println("!!! GameUpdater.checkCollisions: playerHitSomething ist true !!! Grund: " + hitReason); // Bereits vorhanden
++            // ... (andere detaillierte Logs sind schon da) ...
++            if (soundManager != null) {
++                soundManager.playPlayerEnemyCollision();
++            }
++            handlePlayerDeath();
++        }
+     }
++
+ 
+     private void handlePlayerDeath() {
+         Player player = entityManager.getPlayer(); if (player == null) return;
++        // System.out.println("GameUpdater.handlePlayerDeath(): Spieler gestorben. GameState: " + mainApp.getCurrentGameState()); // Bereits vorhanden
+         if (mainApp.getCurrentGameState() == GameState.PLAYING) {
+-            playSoundEffect("player_explosion.wav");
++            if (soundManager != null) {
++                soundManager.playPlayerDeath();
++            }
+             mainApp.triggerGameOver();
+         }
+     }
+-    private void playSoundEffect(String sfxFileName) {
+-        if (activeVoiceProfile != null && activeVoiceProfile.getSfxFolderPath() != null) {
+-            String sfxPath = activeVoiceProfile.getSfxFolderPath();
+-            if (!sfxPath.endsWith("/")) sfxPath += "/";
+-            String fullSfxPath = sfxPath.startsWith("/") ? sfxPath : "/" + sfxPath;
+-            fullSfxPath += sfxFileName;
+-            try {
+-                String resourceUrl = getClass().getResource(fullSfxPath).toExternalForm();
+-                if (resourceUrl == null) {
+-                    System.err.println("SFX Resource URL is null for: " + fullSfxPath);
+-                    return;
+-                }
+-                AudioClip clip = new AudioClip(resourceUrl);
+-                clip.play();
+-            } catch (NullPointerException npe) {
+-                System.err.println("SFX Resource not found (NullPointerException): " + fullSfxPath + " - " + npe.getMessage());
+-            } catch (Exception e) {
+-                System.err.println("SFX Error loading: " + fullSfxPath + " - " + e.getClass().getSimpleName() + ": " + e.getMessage());
+-            }
+-        }
+-    }
+ }
+\ No newline at end of file
+Index: src/main/java/org/example/spaceinvaders/Player.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package org.example.spaceinvaders;\r\n\r\nimport javafx.scene.Node;\r\nimport javafx.scene.paint.Color;\r\nimport javafx.scene.shape.Rectangle;\r\n\r\npublic class Player {\r\n    private Rectangle node;\r\n    private GameDimensions gameDimensions;\r\n\r\n    public Player(GameDimensions gameDimensions) {\r\n        this.gameDimensions = gameDimensions;\r\n        this.node = new Rectangle(gameDimensions.getPlayerWidth(), gameDimensions.getPlayerHeight());\r\n        this.node.setFill(Color.CYAN);\r\n\r\n        // Startposition - verwende setLayoutX/setLayoutY für Konsistenz\r\n        this.node.setLayoutX(gameDimensions.getWidth() / 2 - gameDimensions.getPlayerWidth() / 2);\r\n        this.node.setLayoutY(gameDimensions.getHeight() - gameDimensions.getPlayerHeight() - 20);\r\n    }\r\n\r\n    public Node getNode() {\r\n        return node;\r\n    }\r\n\r\n    public void move(double dx) {\r\n        double newX = node.getLayoutX() + dx; // Verwende getLayoutX() statt getX()\r\n        // Grenzenprüfung\r\n        if (newX >= 0 && newX <= gameDimensions.getWidth() - node.getWidth()) {\r\n            node.setLayoutX(newX); // Verwende setLayoutX() statt setX()\r\n        }\r\n    }\r\n\r\n    // Getter - verwende getLayoutX/getLayoutY für Konsistenz\r\n    public double getX() { return node.getLayoutX(); }\r\n    public double getY() { return node.getLayoutY(); }\r\n    public double getWidth() { return node.getWidth(); }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/org/example/spaceinvaders/Player.java b/src/main/java/org/example/spaceinvaders/Player.java
+--- a/src/main/java/org/example/spaceinvaders/Player.java	(revision 3764d5dcda23f9c1b182cde0985a4824e9b442d1)
++++ b/src/main/java/org/example/spaceinvaders/Player.java	(date 1749415092473)
+@@ -14,8 +14,15 @@
+         this.node.setFill(Color.CYAN);
+ 
+         // Startposition - verwende setLayoutX/setLayoutY für Konsistenz
+-        this.node.setLayoutX(gameDimensions.getWidth() / 2 - gameDimensions.getPlayerWidth() / 2);
+-        this.node.setLayoutY(gameDimensions.getHeight() - gameDimensions.getPlayerHeight() - 20);
++        double startX = gameDimensions.getWidth() / 2 - gameDimensions.getPlayerWidth() / 2;
++        double startY = gameDimensions.getHeight() - gameDimensions.getPlayerHeight() - 20;
++        this.node.setLayoutX(startX);
++        this.node.setLayoutY(startY);
++        System.out.println("Player.java: Spieler erstellt an Position X=" + startX + ", Y=" + startY);
++        System.out.println("Player.java: Spieler Node Bounds in Local: " + this.node.getBoundsInLocal());
++        System.out.println("Player.java: Spieler Node Bounds in Parent (beim Erstellen, Parent ist noch null): " + this.node.getBoundsInParent());
++
++
+     }
+ 
+     public Node getNode() {
+@@ -23,15 +30,14 @@
+     }
+ 
+     public void move(double dx) {
+-        double newX = node.getLayoutX() + dx; // Verwende getLayoutX() statt getX()
+-        // Grenzenprüfung
++        double newX = node.getLayoutX() + dx;
+         if (newX >= 0 && newX <= gameDimensions.getWidth() - node.getWidth()) {
+-            node.setLayoutX(newX); // Verwende setLayoutX() statt setX()
++            node.setLayoutX(newX);
+         }
+     }
+ 
+-    // Getter - verwende getLayoutX/getLayoutY für Konsistenz
+     public double getX() { return node.getLayoutX(); }
+     public double getY() { return node.getLayoutY(); }
+-    public double getWidth() { return node.getWidth(); }
++    public double getWidth() { return node.getBoundsInLocal().getWidth(); } // Sicherer als node.getWidth(), falls Transformationen
++    public double getHeight() { return node.getBoundsInLocal().getHeight();} // Sicherer
+ }
+\ No newline at end of file
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"ArtifactsWorkspaceSettings\">\r\n    <artifacts-to-build>\r\n      <artifact name=\"Spaceinvaders:jar\" />\r\n    </artifacts-to-build>\r\n  </component>\r\n  <component name=\"AutoImportSettings\">\r\n    <option name=\"autoReloadType\" value=\"SELECTIVE\" />\r\n  </component>\r\n  <component name=\"ChangeListManager\">\r\n    <list default=\"true\" id=\"4c91a9e1-7195-4cf0-907d-02ab616834f4\" name=\"Changes\" comment=\"30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey\">\r\n      <change afterPath=\"$PROJECT_DIR$/.idea/.name\" afterDir=\"false\" />\r\n      <change afterPath=\"$PROJECT_DIR$/.idea/artifacts/Spaceinvaders_jar.xml\" afterDir=\"false\" />\r\n      <change afterPath=\"$PROJECT_DIR$/.idea/material_theme_project_new.xml\" afterDir=\"false\" />\r\n      <change afterPath=\"$PROJECT_DIR$/src/main/resources/META-INF/MANIFEST.MF\" afterDir=\"false\" />\r\n      <change beforePath=\"$PROJECT_DIR$/.idea/misc.xml\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/.idea/misc.xml\" afterDir=\"false\" />\r\n      <change beforePath=\"$PROJECT_DIR$/.idea/workspace.xml\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/.idea/workspace.xml\" afterDir=\"false\" />\r\n      <change beforePath=\"$PROJECT_DIR$/pom.xml\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/pom.xml\" afterDir=\"false\" />\r\n    </list>\r\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\r\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\r\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\r\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\r\n  </component>\r\n  <component name=\"FileTemplateManagerImpl\">\r\n    <option name=\"RECENT_TEMPLATES\">\r\n      <list>\r\n        <option value=\"JavaScript File\" />\r\n        <option value=\"CSS File\" />\r\n        <option value=\"Enum\" />\r\n        <option value=\"Class\" />\r\n      </list>\r\n    </option>\r\n  </component>\r\n  <component name=\"Git.Settings\">\r\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$\" />\r\n  </component>\r\n  <component name=\"GitHubPullRequestSearchHistory\">{\n  &quot;lastFilter&quot;: {}\n}</component>\r\n  <component name=\"GithubPullRequestsUISettings\">{\n  &quot;selectedUrlAndAccountId&quot;: {\n    &quot;url&quot;: &quot;https://github.com/flamyngu/SpaceinvadersPOSProject.git&quot;,\n    &quot;accountId&quot;: &quot;13b00220-d775-4ae1-959c-3943886afd1d&quot;\n  }\n}</component>\r\n  <component name=\"MavenImportPreferences\">\r\n    <option name=\"generalSettings\">\r\n      <MavenGeneralSettings>\r\n        <option name=\"mavenHomeTypeForPersistence\" value=\"WRAPPER\" />\r\n      </MavenGeneralSettings>\r\n    </option>\r\n  </component>\r\n  <component name=\"ProblemsViewState\">\r\n    <option name=\"selectedTabId\" value=\"CurrentFile\" />\r\n  </component>\r\n  <component name=\"ProjectColorInfo\">{\n  &quot;associatedIndex&quot;: 8\n}</component>\r\n  <component name=\"ProjectId\" id=\"2wRCGILiwoCyzIqnCqWEDEwvkRU\" />\r\n  <component name=\"ProjectLevelVcsManager\" settingsEditedManually=\"true\">\r\n    <OptionsSetting value=\"false\" id=\"Update\" />\r\n    <ConfirmationsSetting value=\"2\" id=\"Add\" />\r\n  </component>\r\n  <component name=\"ProjectViewState\">\r\n    <option name=\"hideEmptyMiddlePackages\" value=\"true\" />\r\n    <option name=\"showLibraryContents\" value=\"true\" />\r\n  </component>\r\n  <component name=\"PropertiesComponent\"><![CDATA[{\n  \"keyToString\": {\n    \"Application.MusicalInvaders.executor\": \"Run\",\n    \"Application.Musicalinvaders.executor\": \"Run\",\n    \"Maven.Spaceinvaders [clean].executor\": \"Run\",\n    \"Maven.Spaceinvaders [package].executor\": \"Run\",\n    \"RunOnceActivity.OpenProjectViewOnStart\": \"true\",\n    \"RunOnceActivity.ShowReadmeOnStart\": \"true\",\n    \"RunOnceActivity.git.unshallow\": \"true\",\n    \"SHARE_PROJECT_CONFIGURATION_FILES\": \"true\",\n    \"git-widget-placeholder\": \"master\",\n    \"kotlin-language-version-configured\": \"true\",\n    \"list.type.of.created.stylesheet\": \"CSS\",\n    \"node.js.detected.package.eslint\": \"true\",\n    \"node.js.detected.package.tslint\": \"true\",\n    \"node.js.selected.package.eslint\": \"(autodetect)\",\n    \"node.js.selected.package.tslint\": \"(autodetect)\",\n    \"nodejs_package_manager_path\": \"npm\",\n    \"project.structure.last.edited\": \"Project\",\n    \"project.structure.proportion\": \"0.15\",\n    \"project.structure.side.proportion\": \"0.2\",\n    \"settings.editor.selected.configurable\": \"preferences.keymap\",\n    \"vue.rearranger.settings.migration\": \"true\"\n  }\n}]]></component>\r\n  <component name=\"RecentsManager\">\r\n    <key name=\"MoveFile.RECENT_KEYS\">\r\n      <recent name=\"C:\\Users\\dodo\\Documents\\GitHub\\SpaceinvadersPOSProject\\src\\main\\resources\\fonts\" />\r\n      <recent name=\"C:\\Users\\dodo\\Documents\\GitHub\\SpaceinvadersPOSProject\\src\\main\\resources\\images\" />\r\n      <recent name=\"C:\\Users\\dodo\\Documents\\GitHub\\SpaceinvadersPOSProject\\src\\main\\resources\\sfx\\MaxMustermann\" />\r\n    </key>\r\n  </component>\r\n  <component name=\"RunManager\" selected=\"Application.MusicalInvaders\">\r\n    <configuration name=\"MusicalInvaders\" type=\"Application\" factoryName=\"Application\" temporary=\"true\" nameIsGenerated=\"true\">\r\n      <option name=\"MAIN_CLASS_NAME\" value=\"org.example.spaceinvaders.MusicalInvaders\" />\r\n      <module name=\"Spaceinvaders\" />\r\n      <extension name=\"coverage\">\r\n        <pattern>\r\n          <option name=\"PATTERN\" value=\"org.example.spaceinvaders.*\" />\r\n          <option name=\"ENABLED\" value=\"true\" />\r\n        </pattern>\r\n      </extension>\r\n      <method v=\"2\">\r\n        <option name=\"Make\" enabled=\"true\" />\r\n      </method>\r\n    </configuration>\r\n    <configuration name=\"Musicalinvaders\" type=\"Application\" factoryName=\"Application\" temporary=\"true\" nameIsGenerated=\"true\">\r\n      <option name=\"MAIN_CLASS_NAME\" value=\"org.example.spaceinvaders.Musicalinvaders\" />\r\n      <module name=\"Spaceinvaders\" />\r\n      <extension name=\"coverage\">\r\n        <pattern>\r\n          <option name=\"PATTERN\" value=\"org.example.spaceinvaders.*\" />\r\n          <option name=\"ENABLED\" value=\"true\" />\r\n        </pattern>\r\n      </extension>\r\n      <method v=\"2\">\r\n        <option name=\"Make\" enabled=\"true\" />\r\n      </method>\r\n    </configuration>\r\n    <configuration default=\"true\" type=\"JetRunConfigurationType\">\r\n      <module name=\"SpaceinvadersPOSProject\" />\r\n      <method v=\"2\">\r\n        <option name=\"Make\" enabled=\"true\" />\r\n      </method>\r\n    </configuration>\r\n    <configuration default=\"true\" type=\"KotlinStandaloneScriptRunConfigurationType\">\r\n      <module name=\"SpaceinvadersPOSProject\" />\r\n      <option name=\"filePath\" />\r\n      <method v=\"2\">\r\n        <option name=\"Make\" enabled=\"true\" />\r\n      </method>\r\n    </configuration>\r\n    <recent_temporary>\r\n      <list>\r\n        <item itemvalue=\"Application.MusicalInvaders\" />\r\n        <item itemvalue=\"Application.Musicalinvaders\" />\r\n      </list>\r\n    </recent_temporary>\r\n  </component>\r\n  <component name=\"SharedIndexes\">\r\n    <attachedChunks>\r\n      <set>\r\n        <option value=\"bundled-jdk-9823dce3aa75-a94e463ab2e7-intellij.indexing.shared.core-IU-243.26053.27\" />\r\n        <option value=\"bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-IU-243.26053.27\" />\r\n      </set>\r\n    </attachedChunks>\r\n  </component>\r\n  <component name=\"SpellCheckerSettings\" RuntimeDictionaries=\"0\" Folders=\"0\" CustomDictionaries=\"0\" DefaultDictionary=\"application-level\" UseSingleDictionary=\"true\" transferred=\"true\" />\r\n  <component name=\"TaskManager\">\r\n    <task active=\"true\" id=\"Default\" summary=\"Default task\">\r\n      <changelist id=\"4c91a9e1-7195-4cf0-907d-02ab616834f4\" name=\"Changes\" comment=\"\" />\r\n      <created>1745994902765</created>\r\n      <option name=\"number\" value=\"Default\" />\r\n      <option name=\"presentableId\" value=\"Default\" />\r\n      <updated>1745994902765</updated>\r\n      <workItem from=\"1745994903960\" duration=\"671000\" />\r\n      <workItem from=\"1746442331563\" duration=\"740000\" />\r\n      <workItem from=\"1746511734356\" duration=\"5192000\" />\r\n      <workItem from=\"1746531197396\" duration=\"3243000\" />\r\n      <workItem from=\"1746561588938\" duration=\"9000\" />\r\n      <workItem from=\"1746561694681\" duration=\"5430000\" />\r\n      <workItem from=\"1746598233372\" duration=\"3589000\" />\r\n      <workItem from=\"1746878206458\" duration=\"9546000\" />\r\n      <workItem from=\"1746887897428\" duration=\"13000\" />\r\n      <workItem from=\"1746949696674\" duration=\"12307000\" />\r\n      <workItem from=\"1747498770584\" duration=\"725000\" />\r\n      <workItem from=\"1747916562758\" duration=\"11833000\" />\r\n      <workItem from=\"1748107542502\" duration=\"379000\" />\r\n      <workItem from=\"1748622411747\" duration=\"11994000\" />\r\n    </task>\r\n    <task id=\"LOCAL-00001\" summary=\"First Logic + Score\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1746515633239</created>\r\n      <option name=\"number\" value=\"00001\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00001\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1746515633239</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00002\" summary=\"2 Sec timeout  am 6.mai.25\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1746517091844</created>\r\n      <option name=\"number\" value=\"00002\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00002\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1746517091844</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00003\" summary=\"kleiner push für automatisch anpassbare primaryStage (Bildschirm auflösung)  am 6.mai.25\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1746562907242</created>\r\n      <option name=\"number\" value=\"00003\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00003\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1746562907242</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00004\" summary=\"kleiner push, aufgeteilt in 8 Datein  am 6.mai.25\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1746563448546</created>\r\n      <option name=\"number\" value=\"00004\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00004\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1746563448546</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00005\" summary=\"starting page not completed,&#10;fixed the wave problem.&#10;&#10;need to update the starting page look!&#10;am 9.mai.25\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1746816827757</created>\r\n      <option name=\"number\" value=\"00005\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00005\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1746816827757</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00006\" summary=\"Starting Page Complited, css finally done. &#10;look at tree for file struncture&#10;&#10;need to update the starting page look!&#10;am 9.mai.25\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1746887784998</created>\r\n      <option name=\"number\" value=\"00006\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00006\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1746887784998</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00007\" summary=\"Starting Page Complited, css finally done. &#10;look at tree for file struncture&#10;&#10;need to update the starting page look!&#10;am 9.mai.25\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1746887810074</created>\r\n      <option name=\"number\" value=\"00007\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00007\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1746887810074</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00008\" summary=\"credits roll needs css finxing. sonnst funktioniert alles&#10;&#10;need to update the starting page look!&#10;am 11.mai.25\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1746963924053</created>\r\n      <option name=\"number\" value=\"00008\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00008\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1746963924053</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00009\" summary=\"22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing (error with getGamePane())) &#10;acc: sta230286@spg..\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1747928403172</created>\r\n      <option name=\"number\" value=\"00009\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00009\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1747928403172</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00010\" summary=\"30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1748630098706</created>\r\n      <option name=\"number\" value=\"00010\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00010\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1748630098706</updated>\r\n    </task>\r\n    <option name=\"localTasksCounter\" value=\"11\" />\r\n    <servers />\r\n  </component>\r\n  <component name=\"TypeScriptGeneratedFilesManager\">\r\n    <option name=\"version\" value=\"3\" />\r\n  </component>\r\n  <component name=\"VcsManagerConfiguration\">\r\n    <MESSAGE value=\"First Logic + Score\" />\r\n    <MESSAGE value=\"2 Sec timeout  am 6.mai.25\" />\r\n    <MESSAGE value=\"kleiner push für automatisch anpassbare primaryStage (Bildschirm auflösung)  am 6.mai.25\" />\r\n    <MESSAGE value=\"kleiner push, aufgeteilt in 8 Datein  am 6.mai.25\" />\r\n    <MESSAGE value=\"starting page not completed,&#10;fixed the wave problem.&#10;&#10;need to update the starting page look!&#10;am 9.mai.25\" />\r\n    <MESSAGE value=\"Starting Page Complited, css finally done. &#10;look at tree for file struncture&#10;&#10;need to update the starting page look!&#10;am 9.mai.25\" />\r\n    <MESSAGE value=\"credits roll needs css finxing. sonnst funktioniert alles&#10;&#10;need to update the starting page look!&#10;am 11.mai.25\" />\r\n    <MESSAGE value=\"22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing) &#10;acc: sta230286@spg..\" />\r\n    <MESSAGE value=\"22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing (error with getGamePane())) &#10;acc: sta230286@spg..\" />\r\n    <MESSAGE value=\"30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey\" />\r\n    <option name=\"LAST_COMMIT_MESSAGE\" value=\"30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey\" />\r\n  </component>\r\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+--- a/.idea/workspace.xml	(revision 3764d5dcda23f9c1b182cde0985a4824e9b442d1)
++++ b/.idea/workspace.xml	(date 1749416512188)
+@@ -9,14 +9,16 @@
+     <option name="autoReloadType" value="SELECTIVE" />
+   </component>
+   <component name="ChangeListManager">
+-    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey">
+-      <change afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/.idea/artifacts/Spaceinvaders_jar.xml" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/.idea/material_theme_project_new.xml" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/src/main/resources/META-INF/MANIFEST.MF" afterDir="false" />
+-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
++    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025">
++      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/SoundManager.java" afterDir="false" />
+       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/BossController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/BossController.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Player.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Player.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/VoiceProfile.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/VoiceProfile.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/j.js" beforeDir="false" />
+     </list>
+     <option name="SHOW_DIALOG" value="false" />
+     <option name="HIGHLIGHT_CONFLICTS" value="true" />
+@@ -67,31 +69,31 @@
+     <option name="hideEmptyMiddlePackages" value="true" />
+     <option name="showLibraryContents" value="true" />
+   </component>
+-  <component name="PropertiesComponent"><![CDATA[{
+-  "keyToString": {
+-    "Application.MusicalInvaders.executor": "Run",
+-    "Application.Musicalinvaders.executor": "Run",
+-    "Maven.Spaceinvaders [clean].executor": "Run",
+-    "Maven.Spaceinvaders [package].executor": "Run",
+-    "RunOnceActivity.OpenProjectViewOnStart": "true",
+-    "RunOnceActivity.ShowReadmeOnStart": "true",
+-    "RunOnceActivity.git.unshallow": "true",
+-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+-    "git-widget-placeholder": "master",
+-    "kotlin-language-version-configured": "true",
+-    "list.type.of.created.stylesheet": "CSS",
+-    "node.js.detected.package.eslint": "true",
+-    "node.js.detected.package.tslint": "true",
+-    "node.js.selected.package.eslint": "(autodetect)",
+-    "node.js.selected.package.tslint": "(autodetect)",
+-    "nodejs_package_manager_path": "npm",
+-    "project.structure.last.edited": "Project",
+-    "project.structure.proportion": "0.15",
+-    "project.structure.side.proportion": "0.2",
+-    "settings.editor.selected.configurable": "preferences.keymap",
+-    "vue.rearranger.settings.migration": "true"
++  <component name="PropertiesComponent">{
++  &quot;keyToString&quot;: {
++    &quot;Application.MusicalInvaders.executor&quot;: &quot;Run&quot;,
++    &quot;Application.Musicalinvaders.executor&quot;: &quot;Run&quot;,
++    &quot;Maven.Spaceinvaders [clean].executor&quot;: &quot;Run&quot;,
++    &quot;Maven.Spaceinvaders [package].executor&quot;: &quot;Run&quot;,
++    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
++    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
++    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
++    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
++    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
++    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
++    &quot;list.type.of.created.stylesheet&quot;: &quot;CSS&quot;,
++    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
++    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
++    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
++    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
++    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
++    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
++    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
++    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
++    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
++    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+   }
+-}]]></component>
++}</component>
+   <component name="RecentsManager">
+     <key name="MoveFile.RECENT_KEYS">
+       <recent name="C:\Users\dodo\Documents\GitHub\SpaceinvadersPOSProject\src\main\resources\fonts" />
+@@ -175,7 +177,8 @@
+       <workItem from="1747498770584" duration="725000" />
+       <workItem from="1747916562758" duration="11833000" />
+       <workItem from="1748107542502" duration="379000" />
+-      <workItem from="1748622411747" duration="11994000" />
++      <workItem from="1748622411747" duration="12696000" />
++      <workItem from="1749392594273" duration="9985000" />
+     </task>
+     <task id="LOCAL-00001" summary="First Logic + Score">
+       <option name="closed" value="true" />
+@@ -257,7 +260,15 @@
+       <option name="project" value="LOCAL" />
+       <updated>1748630098706</updated>
+     </task>
+-    <option name="localTasksCounter" value="11" />
++    <task id="LOCAL-00011" summary="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025">
++      <option name="closed" value="true" />
++      <created>1748636607958</created>
++      <option name="number" value="00011" />
++      <option name="presentableId" value="LOCAL-00011" />
++      <option name="project" value="LOCAL" />
++      <updated>1748636607958</updated>
++    </task>
++    <option name="localTasksCounter" value="12" />
+     <servers />
+   </component>
+   <component name="TypeScriptGeneratedFilesManager">
+@@ -274,6 +285,7 @@
+     <MESSAGE value="22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing) &#10;acc: sta230286@spg.." />
+     <MESSAGE value="22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing (error with getGamePane())) &#10;acc: sta230286@spg.." />
+     <MESSAGE value="30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey" />
+-    <option name="LAST_COMMIT_MESSAGE" value="30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey" />
++    <MESSAGE value="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025" />
++    <option name="LAST_COMMIT_MESSAGE" value="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025" />
+   </component>
+ </project>
+\ No newline at end of file
+Index: src/main/java/org/example/spaceinvaders/BossController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package org.example.spaceinvaders;\r\n\r\nimport javafx.animation.PauseTransition;\r\nimport javafx.scene.Node;\r\nimport javafx.scene.paint.Color;\r\nimport javafx.scene.shape.Rectangle;\r\nimport javafx.util.Duration;\r\n\r\nimport java.util.ArrayList;\r\nimport java.util.Iterator;\r\nimport java.util.List;\r\nimport java.util.Random;\r\n\r\npublic class BossController {\r\n    private GameEntityManager entityManager;\r\n    private GameDimensions gameDimensions;\r\n    private UIManager uiManager;\r\n\r\n    private int bossPhase = 1;\r\n    private int bossMaxHealth = GameDimensions.BOSS_HEALTH;\r\n    private boolean bossIsRetreating = false;\r\n    private boolean bossIsOffScreen = false;\r\n    private long lastBossShootTime = 0;\r\n\r\n    private double bossTargetY = 0;\r\n    private BossMovementState currentMovementState = BossMovementState.ENTERING;\r\n    private long movementStateStartTime = 0;\r\n    private boolean isBossDivingDown = false; // For DIVE_ATTACK state\r\n    private Random random = new Random();\r\n\r\n    private List<Rectangle> bossProjectiles = new ArrayList<>();\r\n    private List<Enemy> minionEnemies = new ArrayList<>();\r\n    private MinionWaveType currentMinionWaveType = MinionWaveType.DIAGONAL_SWEEP;\r\n    private int minionWaveCount = 0;\r\n    private long minionWaveStartTime = 0;\r\n\r\n    private enum BossMovementState {\r\n        ENTERING, HOVERING, SIDE_STRAFE, DIVE_ATTACK, RETREATING, OFF_SCREEN\r\n    }\r\n\r\n    private enum MinionWaveType {\r\n        DIAGONAL_SWEEP, FORMATION_ATTACK, SWARM_ATTACK, BOUNCING_PATTERN\r\n    }\r\n\r\n    public BossController(GameEntityManager entityManager, GameDimensions gameDimensions, UIManager uiManager) {\r\n        this.entityManager = entityManager;\r\n        this.gameDimensions = gameDimensions;\r\n        this.uiManager = uiManager;\r\n    }\r\n\r\n    public void initializeBoss() {\r\n        System.out.println(\"BossController: Initializing Boss. Phase 1.\");\r\n        bossPhase = 1;\r\n        bossMaxHealth = GameDimensions.BOSS_HEALTH;\r\n        bossIsRetreating = false;\r\n        bossIsOffScreen = false;\r\n        isBossDivingDown = false;\r\n        currentMovementState = BossMovementState.ENTERING;\r\n        movementStateStartTime = System.nanoTime();\r\n        minionWaveCount = 0;\r\n\r\n        Enemy boss = entityManager.getBossEnemy();\r\n        if (boss != null && boss.getNode() != null) {\r\n            boss.getNode().setLayoutX(gameDimensions.getWidth() / 2 - boss.getNode().getBoundsInLocal().getWidth() / 2);\r\n            boss.getNode().setLayoutY(-boss.getNode().getBoundsInLocal().getHeight() - 20);\r\n            boss.setHealth(bossMaxHealth);\r\n            System.out.println(\"BossController: Boss health set to \" + boss.getHealth() + \" for phase 1.\");\r\n            updateBossAppearance();\r\n        } else {\r\n            System.err.println(\"BossController.initializeBoss(): Boss entity or node is null!\");\r\n        }\r\n        clearAllBossProjectiles();\r\n        clearAllMinions();\r\n    }\r\n\r\n    public void updateBossMovement(long now, double deltaTime) {\r\n        Enemy boss = entityManager.getBossEnemy();\r\n        if (boss == null || boss.getNode() == null || !entityManager.isBossActive()) {\r\n            return;\r\n        }\r\n        if (bossIsRetreating) {\r\n            updateRetreatMovement(now, deltaTime, boss);\r\n            updateMinionWaves(now, deltaTime);\r\n        } else {\r\n            updateActiveBossMovement(now, deltaTime, boss);\r\n            updateBossShooting(now, boss);\r\n        }\r\n        updateBossProjectiles(deltaTime);\r\n    }\r\n\r\n    private void updateActiveBossMovement(long now, double deltaTime, Enemy boss) {\r\n        Node bossNode = boss.getNode();\r\n        long timeSinceStateStart = now - movementStateStartTime;\r\n\r\n        switch (currentMovementState) {\r\n            case ENTERING:\r\n                double entrySpeed = gameDimensions.getHeight() * 0.001;\r\n                double targetEntryY = gameDimensions.getHeight() * 0.15;\r\n                if (bossNode.getLayoutY() < targetEntryY) {\r\n                    bossNode.setLayoutY(bossNode.getLayoutY() + entrySpeed * deltaTime * 60);\r\n                } else {\r\n                    bossNode.setLayoutY(targetEntryY);\r\n                    changeMovementState(BossMovementState.HOVERING, now);\r\n                }\r\n                break;\r\n            case HOVERING:\r\n                double hoverAmplitude = 20;\r\n                double hoverSpeedFactor = 0.002;\r\n                double baseY = gameDimensions.getHeight() * 0.15;\r\n                double hoverOffset = Math.sin((double)timeSinceStateStart / 1_000_000_000.0 * hoverSpeedFactor * Math.PI * 2) * hoverAmplitude;\r\n                bossNode.setLayoutY(baseY + hoverOffset);\r\n                if (timeSinceStateStart > (3_000_000_000L + random.nextInt(2_000_000_000))) {\r\n                    changeMovementState(BossMovementState.SIDE_STRAFE, now);\r\n                }\r\n                break;\r\n            case SIDE_STRAFE:\r\n                double strafeSpeedFactor = 0.0005;\r\n                double centerXMovement = gameDimensions.getWidth() / 2;\r\n                double strafeRange = gameDimensions.getWidth() * 0.3;\r\n                double strafeX = centerXMovement + Math.sin((double)timeSinceStateStart / 1_000_000_000.0 * strafeSpeedFactor * Math.PI * 2) * strafeRange;\r\n                bossNode.setLayoutX(strafeX - bossNode.getBoundsInLocal().getWidth() / 2);\r\n                if (timeSinceStateStart > (4_000_000_000L + random.nextInt(2_000_000_000))) {\r\n                    bossTargetY = gameDimensions.getHeight() * 0.4;\r\n                    changeMovementState(BossMovementState.DIVE_ATTACK, now);\r\n                }\r\n                break;\r\n            case DIVE_ATTACK:\r\n                double diveSpeed = gameDimensions.getHeight() * 0.003;\r\n                double hoverY = gameDimensions.getHeight() * 0.15;\r\n\r\n                if (isBossDivingDown) {\r\n                    bossNode.setLayoutY(bossNode.getLayoutY() + diveSpeed * deltaTime * 60);\r\n                    if (bossNode.getLayoutY() >= bossTargetY) {\r\n                        bossNode.setLayoutY(bossTargetY);\r\n                        isBossDivingDown = false;\r\n                    }\r\n                } else {\r\n                    bossNode.setLayoutY(bossNode.getLayoutY() - diveSpeed * deltaTime * 60);\r\n                    if (bossNode.getLayoutY() <= hoverY) {\r\n                        bossNode.setLayoutY(hoverY);\r\n                        changeMovementState(BossMovementState.HOVERING, now);\r\n                    }\r\n                }\r\n                break;\r\n            case RETREATING:\r\n            case OFF_SCREEN:\r\n                break;\r\n        }\r\n    }\r\n\r\n    private void updateRetreatMovement(long now, double deltaTime, Enemy boss) {\r\n        Node bossNode = boss.getNode();\r\n        if (!bossIsOffScreen) {\r\n            double retreatSpeed = gameDimensions.getHeight() * 0.002;\r\n            bossNode.setLayoutY(bossNode.getLayoutY() - retreatSpeed * deltaTime * 60);\r\n            if (bossNode.getLayoutY() + bossNode.getBoundsInLocal().getHeight() < 0) {\r\n                bossIsOffScreen = true;\r\n                startMinionWave(); // Start the first minion wave when boss is off-screen\r\n            }\r\n        } else {\r\n            // If boss is off-screen and all its minions are defeated, and not loading next regular wave\r\n            if (minionEnemies.isEmpty() && !entityManager.isLoadingNextWave()) {\r\n                // Decide whether to spawn another minion wave or return the boss\r\n                // For simplicity, let's assume we spawn a limited number of minion waves, e.g., 1 or 2.\r\n                // Or, the boss returns immediately after the first minion wave is cleared.\r\n                // Current logic: boss returns after the spawned minion wave is cleared.\r\n                // If you want multiple minion waves before boss returns, you'd call startMinionWave() again here\r\n                // under certain conditions (e.g., if minionWaveCount < MAX_MINION_WAVES_PER_RETREAT).\r\n                returnBossForNextPhase(now);\r\n            }\r\n        }\r\n    }\r\n\r\n    private void updateBossShooting(long now, Enemy boss) {\r\n        long shootCooldown = switch (bossPhase) {\r\n            case 1 -> 1_500_000_000L;\r\n            case 2 -> 1_000_000_000L;\r\n            case 3 -> 700_000_000L;\r\n            default -> 1_500_000_000L;\r\n        };\r\n        if (now - lastBossShootTime > shootCooldown) {\r\n            shootBossProjectile(boss);\r\n            lastBossShootTime = now;\r\n        }\r\n    }\r\n\r\n    private void shootBossProjectile(Enemy boss) {\r\n        Node bossNode = boss.getNode();\r\n        Player player = entityManager.getPlayer();\r\n        if (player == null || player.getNode() == null) return;\r\n\r\n        double projectileSpawnY = bossNode.getLayoutY() + bossNode.getBoundsInLocal().getHeight();\r\n        double bossCenterX = bossNode.getLayoutX() + bossNode.getBoundsInLocal().getWidth() / 2;\r\n        double bossLeftQuarter = bossNode.getLayoutX() + bossNode.getBoundsInLocal().getWidth() * 0.25;\r\n        double bossRightQuarter = bossNode.getLayoutX() + bossNode.getBoundsInLocal().getWidth() * 0.75;\r\n\r\n        double playerCenterX = player.getX() + player.getWidth() / 2;\r\n        double playerY = player.getY();\r\n\r\n        switch (bossPhase) {\r\n            case 1:\r\n                createBossProjectile(bossCenterX, projectileSpawnY, playerCenterX, playerY);\r\n                break;\r\n            case 2:\r\n                createBossProjectile(bossLeftQuarter, projectileSpawnY, player.getX(), playerY);\r\n                createBossProjectile(bossRightQuarter, projectileSpawnY, player.getX() + player.getWidth(), playerY);\r\n                break;\r\n            case 3:\r\n                int patternChoice = random.nextInt(3);\r\n                if (patternChoice == 0) {\r\n                    createBossProjectile(bossCenterX, projectileSpawnY, playerCenterX - 50, playerY);\r\n                    createBossProjectile(bossCenterX, projectileSpawnY, playerCenterX, playerY);\r\n                    createBossProjectile(bossCenterX, projectileSpawnY, playerCenterX + 50, playerY);\r\n                } else if (patternChoice == 1) {\r\n                    double[] angles = {-Math.PI / 6, -Math.PI / 12, 0, Math.PI / 12, Math.PI / 6};\r\n                    for (double angle : angles) {\r\n                        double projectileDirX = Math.sin(angle);\r\n                        double projectileDirY = Math.cos(angle);\r\n                        double farDistance = gameDimensions.getHeight();\r\n                        double targetX = bossCenterX + projectileDirX * farDistance;\r\n                        double targetY = projectileSpawnY + projectileDirY * farDistance;\r\n                        createBossProjectile(bossCenterX, projectileSpawnY, targetX, targetY);\r\n                    }\r\n                } else {\r\n                    double offset = gameDimensions.getProjectileWidth() * 2.5;\r\n                    createBossProjectile(bossCenterX - offset, projectileSpawnY, bossCenterX - offset, gameDimensions.getHeight() + 50);\r\n                    createBossProjectile(bossCenterX, projectileSpawnY, bossCenterX, gameDimensions.getHeight() + 50);\r\n                    createBossProjectile(bossCenterX + offset, projectileSpawnY, bossCenterX + offset, gameDimensions.getHeight() + 50);\r\n                }\r\n                break;\r\n        }\r\n    }\r\n\r\n\r\n    private void createBossProjectile(double startX, double startY, double targetX, double targetY) {\r\n        Rectangle projectile = new Rectangle(gameDimensions.getProjectileWidth() * 1.5, gameDimensions.getProjectileHeight() * 1.5);\r\n        projectile.setFill(Color.ORANGERED);\r\n\r\n        projectile.setLayoutX(startX - projectile.getWidth() / 2);\r\n        projectile.setLayoutY(startY);\r\n\r\n        double dx = targetX - startX;\r\n        double dy = targetY - startY;\r\n        double distance = Math.sqrt(dx * dx + dy * dy);\r\n        double projectileSpeed = gameDimensions.getProjectileSpeed() * 0.8;\r\n        if (bossPhase == 3) {\r\n            projectileSpeed *= 1.15;\r\n        }\r\n\r\n        if (distance > 0) {\r\n            projectile.setUserData(new double[]{dx / distance * projectileSpeed, dy / distance * projectileSpeed});\r\n        } else {\r\n            projectile.setUserData(new double[]{0, projectileSpeed});\r\n        }\r\n        bossProjectiles.add(projectile);\r\n        entityManager.getGamePane().getChildren().add(projectile);\r\n    }\r\n\r\n    private void updateBossProjectiles(double deltaTime) {\r\n        Iterator<Rectangle> iterator = bossProjectiles.iterator();\r\n        while (iterator.hasNext()) {\r\n            Rectangle projectile = iterator.next();\r\n            double[] velocity = (double[]) projectile.getUserData();\r\n            projectile.setLayoutX(projectile.getLayoutX() + velocity[0] * deltaTime * 60);\r\n            projectile.setLayoutY(projectile.getLayoutY() + velocity[1] * deltaTime * 60);\r\n\r\n            if (projectile.getLayoutY() > gameDimensions.getHeight() + 50 ||\r\n                    projectile.getLayoutY() < -projectile.getHeight() - 50 ||\r\n                    projectile.getLayoutX() > gameDimensions.getWidth() + 50 ||\r\n                    projectile.getLayoutX() < -projectile.getWidth() - 50) {\r\n                iterator.remove();\r\n                entityManager.getGamePane().getChildren().remove(projectile);\r\n            }\r\n        }\r\n    }\r\n\r\n    public void bossTakeHit() {\r\n        Enemy boss = entityManager.getBossEnemy();\r\n        if (boss == null || boss.getNode() == null || bossIsRetreating) {\r\n            return;\r\n        }\r\n        boss.takeHit();\r\n        flashBoss();\r\n        if (!boss.isAlive()) {\r\n            if (bossPhase < 3) {\r\n                startBossRetreat();\r\n            }\r\n        }\r\n    }\r\n\r\n    private void startBossRetreat() {\r\n        bossIsRetreating = true;\r\n        bossIsOffScreen = false;\r\n        isBossDivingDown = false;\r\n        currentMovementState = BossMovementState.RETREATING;\r\n        movementStateStartTime = System.nanoTime();\r\n        minionWaveCount = 0; // Reset minion wave counter for this retreat sequence\r\n        String message = switch (bossPhase) {\r\n            case 1 -> \"Boss retreating... Reinforcements incoming!\";\r\n            case 2 -> \"Boss retreating... Prepare for the worst!\";\r\n            default -> \"Boss retreating...\";\r\n        };\r\n        uiManager.showPopupMessage(message, 2.0);\r\n        // Note: The first minion wave is triggered in updateRetreatMovement when boss is off-screen.\r\n    }\r\n\r\n    private void startMinionWave() {\r\n        minionWaveCount++; // Increment for tracking, though type selection is random now\r\n        minionWaveStartTime = System.nanoTime();\r\n\r\n        List<MinionWaveType> possibleTypesForThisPhase = new ArrayList<>();\r\n\r\n        // 'bossPhase' here refers to the phase the boss JUST COMPLETED and is retreating from\r\n        switch (bossPhase) {\r\n            case 1: // Minions after Boss Phase 1 is defeated\r\n                possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP);\r\n                possibleTypesForThisPhase.add(MinionWaveType.FORMATION_ATTACK);\r\n                // You can add more types to this pool if you want more variety after phase 1\r\n                break;\r\n            case 2: // Minions after Boss Phase 2 is defeated\r\n                possibleTypesForThisPhase.add(MinionWaveType.SWARM_ATTACK);\r\n                possibleTypesForThisPhase.add(MinionWaveType.BOUNCING_PATTERN);\r\n                // Example: Make DIAGONAL_SWEEP also possible after phase 2\r\n                // possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP);\r\n                break;\r\n            default:\r\n                // Fallback if somehow called for phase 3 retreat (game usually ends)\r\n                // Or if you have more than 3 boss phases and haven't defined pools for them.\r\n                possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP); // Default to one type\r\n                break;\r\n        }\r\n\r\n        if (!possibleTypesForThisPhase.isEmpty()) {\r\n            currentMinionWaveType = possibleTypesForThisPhase.get(random.nextInt(possibleTypesForThisPhase.size()));\r\n        } else {\r\n            // This should ideally not be reached if the switch above is comprehensive for active boss phases\r\n            currentMinionWaveType = MinionWaveType.DIAGONAL_SWEEP; // Absolute fallback\r\n            System.err.println(\"BossController.startMinionWave(): No possible minion types found for bossPhase \" +\r\n                    bossPhase + \", defaulting to DIAGONAL_SWEEP.\");\r\n        }\r\n\r\n        System.out.println(\"BossController: Starting RANDOMIZED minion wave \" + minionWaveCount +\r\n                \" of type \" + currentMinionWaveType + \" after boss phase \" + bossPhase);\r\n        spawnMinionWave(currentMinionWaveType);\r\n    }\r\n\r\n\r\n    private void spawnMinionWave(MinionWaveType waveType) {\r\n        clearAllMinions();\r\n        switch (waveType) {\r\n            case DIAGONAL_SWEEP: spawnDiagonalSweepMinions(); break;\r\n            case FORMATION_ATTACK: spawnFormationMinions(); break;\r\n            case SWARM_ATTACK: spawnSwarmMinions(); break;\r\n            case BOUNCING_PATTERN: spawnBouncingMinions(); break;\r\n        }\r\n    }\r\n\r\n    // --- Minion Spawning Methods (with phase-dependent counts) ---\r\n    private void spawnDiagonalSweepMinions() {\r\n        int minionCount;\r\n        switch (this.bossPhase) {\r\n            case 1: minionCount = 6; break;\r\n            case 2: minionCount = 8; break;\r\n            default: minionCount = 6; break;\r\n        }\r\n        for (int i = 0; i < minionCount; i++) {\r\n            Rectangle minionShape = new Rectangle(gameDimensions.getEnemyWidth() * 0.7, gameDimensions.getEnemyHeight() * 0.7);\r\n            minionShape.setFill(Color.DARKORANGE);\r\n            boolean fromLeft = i % 2 == 0;\r\n            double startX = fromLeft ? -minionShape.getWidth() -10 : gameDimensions.getWidth() + 10;\r\n            double startY = gameDimensions.getHeight() * 0.1 + (i * (gameDimensions.getEnemyHeight() * 0.7 + 10));\r\n            minionShape.setLayoutX(startX); minionShape.setLayoutY(startY);\r\n            minionShape.setUserData(new double[]{fromLeft ? 1.0 : -1.0});\r\n            Enemy minion = new Enemy(minionShape, 1, GameDimensions.POINTS_PER_ENEMY / 2);\r\n            minionEnemies.add(minion); entityManager.getGamePane().getChildren().add(minionShape);\r\n        }\r\n    }\r\n    private void spawnFormationMinions() {\r\n        int minionCount;\r\n        switch (this.bossPhase) {\r\n            case 1: minionCount = 5; break;\r\n            case 2: minionCount = 7; break;\r\n            default: minionCount = 5; break;\r\n        }\r\n        double formationWidth = gameDimensions.getWidth() * 0.5;\r\n        double startXOffset = (gameDimensions.getWidth() - formationWidth) / 2;\r\n        for (int i = 0; i < minionCount; i++) {\r\n            Rectangle minionShape = new Rectangle(gameDimensions.getEnemyWidth() * 0.8, gameDimensions.getEnemyHeight() * 0.8);\r\n            minionShape.setFill(Color.GOLD);\r\n            double x = startXOffset + (i * (formationWidth / (minionCount > 1 ? minionCount - 1 : 1)));\r\n            double y = -minionShape.getHeight() - (Math.abs(i - (minionCount-1)/2.0) * (gameDimensions.getEnemyHeight()*0.8 + 5));\r\n            minionShape.setLayoutX(x); minionShape.setLayoutY(y);\r\n            minionShape.setUserData(new double[]{0.0});\r\n            Enemy minion = new Enemy(minionShape, 1, GameDimensions.POINTS_PER_ENEMY / 2);\r\n            minionEnemies.add(minion); entityManager.getGamePane().getChildren().add(minionShape);\r\n        }\r\n    }\r\n    private void spawnSwarmMinions() {\r\n        int minionCount;\r\n        switch (this.bossPhase) {\r\n            case 1: minionCount = 8; break;\r\n            case 2: minionCount = 12; break;\r\n            default: minionCount = 10; break;\r\n        }\r\n        for (int i = 0; i < minionCount; i++) {\r\n            Rectangle minionShape = new Rectangle(gameDimensions.getEnemyWidth() * 0.5, gameDimensions.getEnemyHeight() * 0.5);\r\n            minionShape.setFill(Color.LIGHTCORAL);\r\n            double x = random.nextDouble() * (gameDimensions.getWidth() - minionShape.getWidth());\r\n            double y = -minionShape.getHeight() - (random.nextDouble() * 150);\r\n            minionShape.setLayoutX(x); minionShape.setLayoutY(y);\r\n            double initialVX = (random.nextDouble() - 0.5) * 2.0;\r\n            double initialVY = 0.5 + random.nextDouble() * 1.5;\r\n            minionShape.setUserData(new double[]{initialVX, initialVY});\r\n            Enemy minion = new Enemy(minionShape, 1, GameDimensions.POINTS_PER_ENEMY / 3);\r\n            minionEnemies.add(minion); entityManager.getGamePane().getChildren().add(minionShape);\r\n        }\r\n    }\r\n    private void spawnBouncingMinions() {\r\n        int minionCount;\r\n        switch (this.bossPhase) {\r\n            case 1: minionCount = 3; break;\r\n            case 2: minionCount = 4; break;\r\n            default: minionCount = 4; break;\r\n        }\r\n        for (int i = 0; i < minionCount; i++) {\r\n            Rectangle minionShape = new Rectangle(gameDimensions.getEnemyWidth(), gameDimensions.getEnemyHeight());\r\n            minionShape.setFill(Color.PALEGREEN);\r\n            double x = (i + 1) * (gameDimensions.getWidth() / (minionCount + 1.0)) - minionShape.getWidth()/2;\r\n            double y = -minionShape.getHeight() - random.nextInt(50);\r\n            minionShape.setLayoutX(x); minionShape.setLayoutY(y);\r\n            minionShape.setUserData(new double[]{x, System.nanoTime() + (long)(i * 500_000_000L)});\r\n            Enemy minion = new Enemy(minionShape, 2, GameDimensions.POINTS_PER_ENEMY);\r\n            minionEnemies.add(minion); entityManager.getGamePane().getChildren().add(minionShape);\r\n        }\r\n    }\r\n\r\n    private void updateMinionWaves(long now, double deltaTime) {\r\n        Iterator<Enemy> iterator = minionEnemies.iterator();\r\n        double baseSpeedY = gameDimensions.getHeight() * 0.0015 * deltaTime * 60;\r\n\r\n        while (iterator.hasNext()) {\r\n            Enemy minion = iterator.next();\r\n            Node minionNode = minion.getNode();\r\n            if (minionNode == null || !minion.isAlive()) {\r\n                if(minionNode != null) entityManager.getGamePane().getChildren().remove(minionNode);\r\n                iterator.remove(); continue;\r\n            }\r\n            double[] userData = (double[]) minionNode.getUserData();\r\n            boolean shouldRemove = false;\r\n            switch (currentMinionWaveType) {\r\n                case DIAGONAL_SWEEP:\r\n                    double dirXFactor = userData[0];\r\n                    double speedXDiagonal = gameDimensions.getWidth() * 0.002 * deltaTime * 60;\r\n                    minionNode.setLayoutX(minionNode.getLayoutX() + dirXFactor * speedXDiagonal);\r\n                    minionNode.setLayoutY(minionNode.getLayoutY() + speedXDiagonal * 0.5);\r\n                    if (minionNode.getLayoutY() > gameDimensions.getHeight() + 20 ||\r\n                            (dirXFactor > 0 && minionNode.getLayoutX() > gameDimensions.getWidth() + 20) ||\r\n                            (dirXFactor < 0 && minionNode.getLayoutX() < -minionNode.getBoundsInLocal().getWidth() - 20)) {\r\n                        shouldRemove = true;\r\n                    }\r\n                    break;\r\n                case FORMATION_ATTACK:\r\n                    minionNode.setLayoutY(minionNode.getLayoutY() + baseSpeedY);\r\n                    if (minionNode.getLayoutY() > gameDimensions.getHeight() + 20) shouldRemove = true;\r\n                    break;\r\n                case SWARM_ATTACK:\r\n                    double vx = userData[0]; double vy = userData[1];\r\n                    vx += (random.nextDouble() - 0.5) * 0.1; vy += (random.nextDouble() - 0.5) * 0.05;\r\n                    vx = Math.max(-2.5, Math.min(2.5, vx)); vy = Math.max(0.4, Math.min(3.0, vy));\r\n                    userData[0] = vx; userData[1] = vy;\r\n                    double actualSpeedXSwarm = gameDimensions.getEnemyWidth() * 0.04 * vx * deltaTime * 60;\r\n                    double actualSpeedYSwarm = gameDimensions.getEnemyHeight() * 0.04 * vy * deltaTime * 60;\r\n                    minionNode.setLayoutX(minionNode.getLayoutX() + actualSpeedXSwarm);\r\n                    minionNode.setLayoutY(minionNode.getLayoutY() + actualSpeedYSwarm);\r\n                    if (minionNode.getLayoutX() < 0) {\r\n                        minionNode.setLayoutX(0); userData[0] = Math.abs(vx * 0.8);\r\n                    } else if (minionNode.getLayoutX() > gameDimensions.getWidth() - minionNode.getBoundsInLocal().getWidth()) {\r\n                        minionNode.setLayoutX(gameDimensions.getWidth() - minionNode.getBoundsInLocal().getWidth());\r\n                        userData[0] = -Math.abs(vx * 0.8);\r\n                    }\r\n                    if (minionNode.getLayoutY() > gameDimensions.getHeight() + 20) shouldRemove = true;\r\n                    break;\r\n                case BOUNCING_PATTERN:\r\n                    double initialXForBounce = userData[0]; long phaseTimeOffsetNanos = (long)userData[1];\r\n                    double bounceAmplitude = gameDimensions.getWidth() * 0.15;\r\n                    double timeInSeconds = (now - phaseTimeOffsetNanos) / 1_000_000_000.0;\r\n                    double bounceFrequencyFactor = 1.5;\r\n                    minionNode.setLayoutY(minionNode.getLayoutY() + baseSpeedY * 0.8);\r\n                    double newBounceX = initialXForBounce + Math.sin(timeInSeconds * bounceFrequencyFactor * Math.PI * 2) * bounceAmplitude;\r\n                    newBounceX = Math.max(0, Math.min(newBounceX, gameDimensions.getWidth() - minionNode.getBoundsInLocal().getWidth()));\r\n                    minionNode.setLayoutX(newBounceX);\r\n                    if (minionNode.getLayoutY() > gameDimensions.getHeight() + 20) shouldRemove = true;\r\n                    break;\r\n            }\r\n            if (shouldRemove) {\r\n                iterator.remove(); entityManager.getGamePane().getChildren().remove(minionNode);\r\n            }\r\n        }\r\n    }\r\n\r\n\r\n    private void returnBossForNextPhase(long now) {\r\n        System.out.println(\"BossController: Returning for Phase \" + (bossPhase + 1));\r\n        bossPhase++;\r\n        bossIsRetreating = false;\r\n        bossIsOffScreen = false;\r\n        isBossDivingDown = false;\r\n\r\n        Enemy boss = entityManager.getBossEnemy();\r\n        if (boss != null) {\r\n            int newHealth = bossMaxHealth + (bossPhase - 1) * (GameDimensions.BOSS_HEALTH / 2);\r\n            entityManager.resetBossHealth(newHealth);\r\n            System.out.println(\"BossController: Boss health reset to \" + newHealth + \" for phase \" + bossPhase);\r\n            if (boss.getNode() != null) {\r\n                boss.getNode().setLayoutX(gameDimensions.getWidth() / 2 - boss.getNode().getBoundsInLocal().getWidth() / 2);\r\n                boss.getNode().setLayoutY(-boss.getNode().getBoundsInLocal().getHeight() - 20);\r\n                boss.getNode().setVisible(true);\r\n            }\r\n        } else {\r\n            System.err.println(\"BossController.returnBossForNextPhase(): Boss entity is NULL!\");\r\n        }\r\n\r\n        currentMovementState = BossMovementState.ENTERING;\r\n        movementStateStartTime = now;\r\n        minionWaveCount = 0;\r\n        updateBossAppearance();\r\n        String phaseMessage = switch (bossPhase) {\r\n            case 2 -> \"Boss Phase 2 - More Power!\"; case 3 -> \"Boss Phase 3 - Final Stand!\";\r\n            default -> \"Boss has returned!\";\r\n        };\r\n        uiManager.showPopupMessage(phaseMessage, 2.5);\r\n    }\r\n\r\n    private void updateBossAppearance() {\r\n        Enemy boss = entityManager.getBossEnemy();\r\n        if (boss == null || boss.getNode() == null) return;\r\n        Rectangle bossRect = (Rectangle) boss.getNode();\r\n        Color phaseColor = switch (bossPhase) {\r\n            case 1 -> Color.rgb(100, 0, 0); case 2 -> Color.rgb(100, 0, 100);\r\n            case 3 -> Color.rgb(80, 0, 80, 0.9); default -> Color.DARKRED;\r\n        };\r\n        bossRect.setFill(phaseColor);\r\n    }\r\n    private void flashBoss() {\r\n        Enemy boss = entityManager.getBossEnemy();\r\n        if (boss == null || boss.getNode() == null) return;\r\n        Rectangle bossRect = (Rectangle) boss.getNode();\r\n        bossRect.setFill(Color.WHITE);\r\n        PauseTransition flash = new PauseTransition(Duration.millis(80));\r\n        flash.setOnFinished(e -> updateBossAppearance());\r\n        flash.play();\r\n    }\r\n    private void changeMovementState(BossMovementState newState, long now) {\r\n        currentMovementState = newState;\r\n        movementStateStartTime = now;\r\n        if (newState == BossMovementState.DIVE_ATTACK) {\r\n            this.isBossDivingDown = true;\r\n        }\r\n    }\r\n\r\n    public void clearAllBossProjectiles() {\r\n        Iterator<Rectangle> it = bossProjectiles.iterator();\r\n        while(it.hasNext()){ Rectangle p = it.next(); entityManager.getGamePane().getChildren().remove(p); it.remove(); }\r\n    }\r\n    public void clearAllMinions() {\r\n        Iterator<Enemy> it = minionEnemies.iterator();\r\n        while(it.hasNext()){ Enemy m = it.next(); if(m.getNode() != null) entityManager.getGamePane().getChildren().remove(m.getNode()); it.remove(); }\r\n    }\r\n    public boolean checkBossProjectileCollisions(Player player) {\r\n        if (player == null || player.getNode() == null) return false;\r\n        Iterator<Rectangle> iterator = bossProjectiles.iterator();\r\n        while (iterator.hasNext()) {\r\n            Rectangle projectile = iterator.next();\r\n            if (projectile.getBoundsInParent().intersects(player.getNode().getBoundsInParent())) {\r\n                iterator.remove(); entityManager.getGamePane().getChildren().remove(projectile); return true;\r\n            }\r\n        }\r\n        return false;\r\n    }\r\n    public boolean checkPlayerProjectileVsMinionCollisions(List<Rectangle> playerProjectiles, UIManager uiManager) {\r\n        boolean hitDetectedOverall = false;\r\n        Iterator<Rectangle> projIterator = playerProjectiles.iterator();\r\n        while (projIterator.hasNext()) {\r\n            Rectangle projectile = projIterator.next();\r\n            Iterator<Enemy> minionIterator = minionEnemies.iterator();\r\n            while (minionIterator.hasNext()) {\r\n                Enemy minion = minionIterator.next();\r\n                if (minion.getNode() != null && minion.isAlive() && projectile.getBoundsInParent().intersects(minion.getNode().getBoundsInParent())) {\r\n                    minion.takeHit();\r\n                    if (!minion.isAlive()) {\r\n                        minionIterator.remove(); entityManager.getGamePane().getChildren().remove(minion.getNode()); uiManager.addScore(minion.getPoints());\r\n                    }\r\n                    projIterator.remove(); entityManager.getGamePane().getChildren().remove(projectile);\r\n                    hitDetectedOverall = true; break;\r\n                }\r\n            }\r\n            if(hitDetectedOverall && !projIterator.hasNext()) break; // if a hit was made and it was the last projectile\r\n        }\r\n        return hitDetectedOverall;\r\n    }\r\n    public boolean checkPlayerVsMinionCollisions(Player player) {\r\n        if (player == null || player.getNode() == null) return false;\r\n        for (Enemy minion : minionEnemies) {\r\n            if (minion.getNode() != null && minion.isAlive() && player.getNode().getBoundsInParent().intersects(minion.getNode().getBoundsInParent())) return true;\r\n        }\r\n        return false;\r\n    }\r\n\r\n    public void resetBoss() {\r\n        System.out.println(\"BossController: resetBoss() CALLED.\");\r\n        bossPhase = 1;\r\n        bossIsRetreating = false;\r\n        bossIsOffScreen = false;\r\n        isBossDivingDown = false;\r\n        currentMovementState = BossMovementState.ENTERING;\r\n        minionWaveCount = 0;\r\n        clearAllBossProjectiles();\r\n        clearAllMinions();\r\n    }\r\n\r\n    public List<Rectangle> getBossProjectiles() { return bossProjectiles; }\r\n    public List<Enemy> getMinionEnemies() { return minionEnemies; }\r\n    public int getBossPhase() { return bossPhase; }\r\n    public boolean isBossRetreating() { return bossIsRetreating; }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/org/example/spaceinvaders/BossController.java b/src/main/java/org/example/spaceinvaders/BossController.java
+--- a/src/main/java/org/example/spaceinvaders/BossController.java	(revision 3764d5dcda23f9c1b182cde0985a4824e9b442d1)
++++ b/src/main/java/org/example/spaceinvaders/BossController.java	(date 1749414075358)
+@@ -15,6 +15,7 @@
+     private GameEntityManager entityManager;
+     private GameDimensions gameDimensions;
+     private UIManager uiManager;
++    private SoundManager soundManager;
+ 
+     private int bossPhase = 1;
+     private int bossMaxHealth = GameDimensions.BOSS_HEALTH;
+@@ -25,7 +26,7 @@
+     private double bossTargetY = 0;
+     private BossMovementState currentMovementState = BossMovementState.ENTERING;
+     private long movementStateStartTime = 0;
+-    private boolean isBossDivingDown = false; // For DIVE_ATTACK state
++    private boolean isBossDivingDown = false;
+     private Random random = new Random();
+ 
+     private List<Rectangle> bossProjectiles = new ArrayList<>();
+@@ -42,10 +43,11 @@
+         DIAGONAL_SWEEP, FORMATION_ATTACK, SWARM_ATTACK, BOUNCING_PATTERN
+     }
+ 
+-    public BossController(GameEntityManager entityManager, GameDimensions gameDimensions, UIManager uiManager) {
++    public BossController(GameEntityManager entityManager, GameDimensions gameDimensions, UIManager uiManager, SoundManager soundManager) {
+         this.entityManager = entityManager;
+         this.gameDimensions = gameDimensions;
+         this.uiManager = uiManager;
++        this.soundManager = soundManager;
+     }
+ 
+     public void initializeBoss() {
+@@ -78,17 +80,20 @@
+         if (boss == null || boss.getNode() == null || !entityManager.isBossActive()) {
+             return;
+         }
++        double dtScaledForBossBody = deltaTime * 60.0;
++        if (dtScaledForBossBody <= 0) dtScaledForBossBody = 1.0;
++
+         if (bossIsRetreating) {
+-            updateRetreatMovement(now, deltaTime, boss);
+-            updateMinionWaves(now, deltaTime);
++            updateRetreatMovement(now, dtScaledForBossBody, boss); // Boss body uses scaled deltaTime
++            updateMinionWaves(now, deltaTime); // Minions will use original per-tick logic
+         } else {
+-            updateActiveBossMovement(now, deltaTime, boss);
++            updateActiveBossMovement(now, dtScaledForBossBody, boss); // Boss body uses scaled deltaTime
+             updateBossShooting(now, boss);
+         }
+-        updateBossProjectiles(deltaTime);
++        updateBossProjectiles(deltaTime); // Boss projectiles use original per-tick logic
+     }
+ 
+-    private void updateActiveBossMovement(long now, double deltaTime, Enemy boss) {
++    private void updateActiveBossMovement(long now, double dtScaled, Enemy boss) {
+         Node bossNode = boss.getNode();
+         long timeSinceStateStart = now - movementStateStartTime;
+ 
+@@ -97,7 +102,7 @@
+                 double entrySpeed = gameDimensions.getHeight() * 0.001;
+                 double targetEntryY = gameDimensions.getHeight() * 0.15;
+                 if (bossNode.getLayoutY() < targetEntryY) {
+-                    bossNode.setLayoutY(bossNode.getLayoutY() + entrySpeed * deltaTime * 60);
++                    bossNode.setLayoutY(bossNode.getLayoutY() + entrySpeed * dtScaled);
+                 } else {
+                     bossNode.setLayoutY(targetEntryY);
+                     changeMovementState(BossMovementState.HOVERING, now);
+@@ -126,18 +131,18 @@
+                 break;
+             case DIVE_ATTACK:
+                 double diveSpeed = gameDimensions.getHeight() * 0.003;
+-                double hoverY = gameDimensions.getHeight() * 0.15;
++                double hoverYReturn = gameDimensions.getHeight() * 0.15;
+ 
+                 if (isBossDivingDown) {
+-                    bossNode.setLayoutY(bossNode.getLayoutY() + diveSpeed * deltaTime * 60);
++                    bossNode.setLayoutY(bossNode.getLayoutY() + diveSpeed * dtScaled);
+                     if (bossNode.getLayoutY() >= bossTargetY) {
+                         bossNode.setLayoutY(bossTargetY);
+                         isBossDivingDown = false;
+                     }
+                 } else {
+-                    bossNode.setLayoutY(bossNode.getLayoutY() - diveSpeed * deltaTime * 60);
+-                    if (bossNode.getLayoutY() <= hoverY) {
+-                        bossNode.setLayoutY(hoverY);
++                    bossNode.setLayoutY(bossNode.getLayoutY() - diveSpeed * dtScaled);
++                    if (bossNode.getLayoutY() <= hoverYReturn) {
++                        bossNode.setLayoutY(hoverYReturn);
+                         changeMovementState(BossMovementState.HOVERING, now);
+                     }
+                 }
+@@ -148,24 +153,17 @@
+         }
+     }
+ 
+-    private void updateRetreatMovement(long now, double deltaTime, Enemy boss) {
++    private void updateRetreatMovement(long now, double dtScaled, Enemy boss) {
+         Node bossNode = boss.getNode();
+         if (!bossIsOffScreen) {
+             double retreatSpeed = gameDimensions.getHeight() * 0.002;
+-            bossNode.setLayoutY(bossNode.getLayoutY() - retreatSpeed * deltaTime * 60);
++            bossNode.setLayoutY(bossNode.getLayoutY() - retreatSpeed * dtScaled);
+             if (bossNode.getLayoutY() + bossNode.getBoundsInLocal().getHeight() < 0) {
+                 bossIsOffScreen = true;
+-                startMinionWave(); // Start the first minion wave when boss is off-screen
++                startMinionWave();
+             }
+         } else {
+-            // If boss is off-screen and all its minions are defeated, and not loading next regular wave
+             if (minionEnemies.isEmpty() && !entityManager.isLoadingNextWave()) {
+-                // Decide whether to spawn another minion wave or return the boss
+-                // For simplicity, let's assume we spawn a limited number of minion waves, e.g., 1 or 2.
+-                // Or, the boss returns immediately after the first minion wave is cleared.
+-                // Current logic: boss returns after the spawned minion wave is cleared.
+-                // If you want multiple minion waves before boss returns, you'd call startMinionWave() again here
+-                // under certain conditions (e.g., if minionWaveCount < MAX_MINION_WAVES_PER_RETREAT).
+                 returnBossForNextPhase(now);
+             }
+         }
+@@ -181,6 +179,9 @@
+         if (now - lastBossShootTime > shootCooldown) {
+             shootBossProjectile(boss);
+             lastBossShootTime = now;
++            if (soundManager != null) {
++                soundManager.playBossShoot();
++            }
+         }
+     }
+ 
+@@ -242,15 +243,16 @@
+         double dx = targetX - startX;
+         double dy = targetY - startY;
+         double distance = Math.sqrt(dx * dx + dy * dy);
+-        double projectileSpeed = gameDimensions.getProjectileSpeed() * 0.8;
++
++        double projectileSpeedPerTick = gameDimensions.getProjectileSpeed() * 0.8;
+         if (bossPhase == 3) {
+-            projectileSpeed *= 1.15;
++            projectileSpeedPerTick *= 1.15;
+         }
+ 
+         if (distance > 0) {
+-            projectile.setUserData(new double[]{dx / distance * projectileSpeed, dy / distance * projectileSpeed});
++            projectile.setUserData(new double[]{dx / distance * projectileSpeedPerTick, dy / distance * projectileSpeedPerTick});
+         } else {
+-            projectile.setUserData(new double[]{0, projectileSpeed});
++            projectile.setUserData(new double[]{0, projectileSpeedPerTick});
+         }
+         bossProjectiles.add(projectile);
+         entityManager.getGamePane().getChildren().add(projectile);
+@@ -260,9 +262,10 @@
+         Iterator<Rectangle> iterator = bossProjectiles.iterator();
+         while (iterator.hasNext()) {
+             Rectangle projectile = iterator.next();
+-            double[] velocity = (double[]) projectile.getUserData();
+-            projectile.setLayoutX(projectile.getLayoutX() + velocity[0] * deltaTime * 60);
+-            projectile.setLayoutY(projectile.getLayoutY() + velocity[1] * deltaTime * 60);
++            double[] velocityPerTick = (double[]) projectile.getUserData();
++
++            projectile.setLayoutX(projectile.getLayoutX() + velocityPerTick[0]);
++            projectile.setLayoutY(projectile.getLayoutY() + velocityPerTick[1]);
+ 
+             if (projectile.getLayoutY() > gameDimensions.getHeight() + 50 ||
+                     projectile.getLayoutY() < -projectile.getHeight() - 50 ||
+@@ -294,47 +297,42 @@
+         isBossDivingDown = false;
+         currentMovementState = BossMovementState.RETREATING;
+         movementStateStartTime = System.nanoTime();
+-        minionWaveCount = 0; // Reset minion wave counter for this retreat sequence
++        minionWaveCount = 0;
+         String message = switch (bossPhase) {
+             case 1 -> "Boss retreating... Reinforcements incoming!";
+             case 2 -> "Boss retreating... Prepare for the worst!";
+             default -> "Boss retreating...";
+         };
+         uiManager.showPopupMessage(message, 2.0);
+-        // Note: The first minion wave is triggered in updateRetreatMovement when boss is off-screen.
++
++        if (soundManager != null) {
++            soundManager.playBossScared();
++        }
+     }
+ 
+     private void startMinionWave() {
+-        minionWaveCount++; // Increment for tracking, though type selection is random now
++        minionWaveCount++;
+         minionWaveStartTime = System.nanoTime();
+ 
+         List<MinionWaveType> possibleTypesForThisPhase = new ArrayList<>();
+-
+-        // 'bossPhase' here refers to the phase the boss JUST COMPLETED and is retreating from
+         switch (bossPhase) {
+-            case 1: // Minions after Boss Phase 1 is defeated
++            case 1:
+                 possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP);
+                 possibleTypesForThisPhase.add(MinionWaveType.FORMATION_ATTACK);
+-                // You can add more types to this pool if you want more variety after phase 1
+                 break;
+-            case 2: // Minions after Boss Phase 2 is defeated
++            case 2:
+                 possibleTypesForThisPhase.add(MinionWaveType.SWARM_ATTACK);
+                 possibleTypesForThisPhase.add(MinionWaveType.BOUNCING_PATTERN);
+-                // Example: Make DIAGONAL_SWEEP also possible after phase 2
+-                // possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP);
+                 break;
+             default:
+-                // Fallback if somehow called for phase 3 retreat (game usually ends)
+-                // Or if you have more than 3 boss phases and haven't defined pools for them.
+-                possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP); // Default to one type
++                possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP);
+                 break;
+         }
+ 
+         if (!possibleTypesForThisPhase.isEmpty()) {
+             currentMinionWaveType = possibleTypesForThisPhase.get(random.nextInt(possibleTypesForThisPhase.size()));
+         } else {
+-            // This should ideally not be reached if the switch above is comprehensive for active boss phases
+-            currentMinionWaveType = MinionWaveType.DIAGONAL_SWEEP; // Absolute fallback
++            currentMinionWaveType = MinionWaveType.DIAGONAL_SWEEP;
+             System.err.println("BossController.startMinionWave(): No possible minion types found for bossPhase " +
+                     bossPhase + ", defaulting to DIAGONAL_SWEEP.");
+         }
+@@ -355,7 +353,6 @@
+         }
+     }
+ 
+-    // --- Minion Spawning Methods (with phase-dependent counts) ---
+     private void spawnDiagonalSweepMinions() {
+         int minionCount;
+         switch (this.bossPhase) {
+@@ -434,9 +431,12 @@
+         }
+     }
+ 
++    // Reverted Minion Movement to original "per-tick" logic, ignoring deltaTime for speed calculation
+     private void updateMinionWaves(long now, double deltaTime) {
+         Iterator<Enemy> iterator = minionEnemies.iterator();
+-        double baseSpeedY = gameDimensions.getHeight() * 0.0015 * deltaTime * 60;
++        // Original speeds were per-tick.
++        // The "* deltaTime * 60" scaling is removed from speed calculations here.
++        // Speeds defined inside cases are now the actual movement per update.
+ 
+         while (iterator.hasNext()) {
+             Enemy minion = iterator.next();
+@@ -447,12 +447,25 @@
+             }
+             double[] userData = (double[]) minionNode.getUserData();
+             boolean shouldRemove = false;
++
++            // Speeds here are now interpreted as "per game update tick"
++            // The original "* deltaTime * 60" is removed.
++            // The base speeds are tuned as they were originally.
++            double dtScaledOriginal = 1.0; // Effectively, this assumes a fixed update rate for these speeds.
++            // If your original code assumed a fixed "deltaTime" or was just tuned to game loop speed,
++            // this dtScaledOriginal would be that implicit factor. For simplicity, using 1.0
++            // means the speeds defined below are the direct movement amounts per tick.
++
+             switch (currentMinionWaveType) {
+                 case DIAGONAL_SWEEP:
+                     double dirXFactor = userData[0];
+-                    double speedXDiagonal = gameDimensions.getWidth() * 0.002 * deltaTime * 60;
+-                    minionNode.setLayoutX(minionNode.getLayoutX() + dirXFactor * speedXDiagonal);
+-                    minionNode.setLayoutY(minionNode.getLayoutY() + speedXDiagonal * 0.5);
++                    // Original speed constant was based on gameDimensions.getWidth() * 0.002
++                    // If that was a per-second speed, then it needs deltaTime.
++                    // If it was a per-tick speed, use it directly.
++                    // Let's assume it was tuned as a per-tick value multiplied by the dtScaled (effectively 1 here).
++                    double speedXDiagonalPerTick = gameDimensions.getWidth() * 0.002 * dtScaledOriginal;
++                    minionNode.setLayoutX(minionNode.getLayoutX() + dirXFactor * speedXDiagonalPerTick);
++                    minionNode.setLayoutY(minionNode.getLayoutY() + speedXDiagonalPerTick * 0.5); // Y speed related to X
+                     if (minionNode.getLayoutY() > gameDimensions.getHeight() + 20 ||
+                             (dirXFactor > 0 && minionNode.getLayoutX() > gameDimensions.getWidth() + 20) ||
+                             (dirXFactor < 0 && minionNode.getLayoutX() < -minionNode.getBoundsInLocal().getWidth() - 20)) {
+@@ -460,18 +473,24 @@
+                     }
+                     break;
+                 case FORMATION_ATTACK:
+-                    minionNode.setLayoutY(minionNode.getLayoutY() + baseSpeedY);
++                    // Original baseSpeedY was gameDimensions.getHeight() * 0.0015 * (deltaTime * 60)
++                    // We revert to a per-tick speed interpretation.
++                    double formationSpeedYPerTick = gameDimensions.getHeight() * 0.0015 * dtScaledOriginal;
++                    minionNode.setLayoutY(minionNode.getLayoutY() + formationSpeedYPerTick);
+                     if (minionNode.getLayoutY() > gameDimensions.getHeight() + 20) shouldRemove = true;
+                     break;
+                 case SWARM_ATTACK:
+                     double vx = userData[0]; double vy = userData[1];
+-                    vx += (random.nextDouble() - 0.5) * 0.1; vy += (random.nextDouble() - 0.5) * 0.05;
++                    // Randomness factors applied per tick
++                    vx += (random.nextDouble() - 0.5) * 0.1;
++                    vy += (random.nextDouble() - 0.5) * 0.05;
+                     vx = Math.max(-2.5, Math.min(2.5, vx)); vy = Math.max(0.4, Math.min(3.0, vy));
+                     userData[0] = vx; userData[1] = vy;
+-                    double actualSpeedXSwarm = gameDimensions.getEnemyWidth() * 0.04 * vx * deltaTime * 60;
+-                    double actualSpeedYSwarm = gameDimensions.getEnemyHeight() * 0.04 * vy * deltaTime * 60;
+-                    minionNode.setLayoutX(minionNode.getLayoutX() + actualSpeedXSwarm);
+-                    minionNode.setLayoutY(minionNode.getLayoutY() + actualSpeedYSwarm);
++                    // Original speeds: gameDimensions.getEnemyWidth() * 0.04 * vx (scaled by dtScaled)
++                    double swarmSpeedXPerTick = gameDimensions.getEnemyWidth() * 0.04 * vx * dtScaledOriginal;
++                    double swarmSpeedYPerTick = gameDimensions.getEnemyHeight() * 0.04 * vy * dtScaledOriginal;
++                    minionNode.setLayoutX(minionNode.getLayoutX() + swarmSpeedXPerTick);
++                    minionNode.setLayoutY(minionNode.getLayoutY() + swarmSpeedYPerTick);
+                     if (minionNode.getLayoutX() < 0) {
+                         minionNode.setLayoutX(0); userData[0] = Math.abs(vx * 0.8);
+                     } else if (minionNode.getLayoutX() > gameDimensions.getWidth() - minionNode.getBoundsInLocal().getWidth()) {
+@@ -485,7 +504,10 @@
+                     double bounceAmplitude = gameDimensions.getWidth() * 0.15;
+                     double timeInSeconds = (now - phaseTimeOffsetNanos) / 1_000_000_000.0;
+                     double bounceFrequencyFactor = 1.5;
+-                    minionNode.setLayoutY(minionNode.getLayoutY() + baseSpeedY * 0.8);
++                    // Original Y speed: baseSpeedY * 0.8 (where baseSpeedY was effectively per-second)
++                    // Revert to per-tick interpretation for Y speed
++                    double bouncingSpeedYPerTick = gameDimensions.getHeight() * 0.0015 * 0.8 * dtScaledOriginal;
++                    minionNode.setLayoutY(minionNode.getLayoutY() + bouncingSpeedYPerTick);
+                     double newBounceX = initialXForBounce + Math.sin(timeInSeconds * bounceFrequencyFactor * Math.PI * 2) * bounceAmplitude;
+                     newBounceX = Math.max(0, Math.min(newBounceX, gameDimensions.getWidth() - minionNode.getBoundsInLocal().getWidth()));
+                     minionNode.setLayoutX(newBounceX);
+@@ -525,7 +547,8 @@
+         minionWaveCount = 0;
+         updateBossAppearance();
+         String phaseMessage = switch (bossPhase) {
+-            case 2 -> "Boss Phase 2 - More Power!"; case 3 -> "Boss Phase 3 - Final Stand!";
++            case 2 -> "Boss Phase 2 - More Power!";
++            case 3 -> "Boss Phase 3 - Final Stand!";
+             default -> "Boss has returned!";
+         };
+         uiManager.showPopupMessage(phaseMessage, 2.5);
+@@ -536,8 +559,10 @@
+         if (boss == null || boss.getNode() == null) return;
+         Rectangle bossRect = (Rectangle) boss.getNode();
+         Color phaseColor = switch (bossPhase) {
+-            case 1 -> Color.rgb(100, 0, 0); case 2 -> Color.rgb(100, 0, 100);
+-            case 3 -> Color.rgb(80, 0, 80, 0.9); default -> Color.DARKRED;
++            case 1 -> Color.rgb(100, 0, 0);
++            case 2 -> Color.rgb(100, 0, 100);
++            case 3 -> Color.rgb(80, 0, 80, 0.9);
++            default -> Color.DARKRED;
+         };
+         bossRect.setFill(phaseColor);
+     }
+@@ -547,7 +572,13 @@
+         Rectangle bossRect = (Rectangle) boss.getNode();
+         bossRect.setFill(Color.WHITE);
+         PauseTransition flash = new PauseTransition(Duration.millis(80));
+-        flash.setOnFinished(e -> updateBossAppearance());
++        flash.setOnFinished(e -> {
++            if (boss.isAlive()) {
++                updateBossAppearance();
++            } else {
++                updateBossAppearance();
++            }
++        });
+         flash.play();
+     }
+     private void changeMovementState(BossMovementState newState, long now) {
+@@ -560,11 +591,19 @@
+ 
+     public void clearAllBossProjectiles() {
+         Iterator<Rectangle> it = bossProjectiles.iterator();
+-        while(it.hasNext()){ Rectangle p = it.next(); entityManager.getGamePane().getChildren().remove(p); it.remove(); }
++        while(it.hasNext()){
++            Rectangle p = it.next();
++            entityManager.getGamePane().getChildren().remove(p);
++            it.remove();
++        }
+     }
+     public void clearAllMinions() {
+         Iterator<Enemy> it = minionEnemies.iterator();
+-        while(it.hasNext()){ Enemy m = it.next(); if(m.getNode() != null) entityManager.getGamePane().getChildren().remove(m.getNode()); it.remove(); }
++        while(it.hasNext()){
++            Enemy m = it.next();
++            if(m.getNode() != null) entityManager.getGamePane().getChildren().remove(m.getNode());
++            it.remove();
++        }
+     }
+     public boolean checkBossProjectileCollisions(Player player) {
+         if (player == null || player.getNode() == null) return false;
+@@ -572,7 +611,9 @@
+         while (iterator.hasNext()) {
+             Rectangle projectile = iterator.next();
+             if (projectile.getBoundsInParent().intersects(player.getNode().getBoundsInParent())) {
+-                iterator.remove(); entityManager.getGamePane().getChildren().remove(projectile); return true;
++                iterator.remove();
++                entityManager.getGamePane().getChildren().remove(projectile);
++                return true;
+             }
+         }
+         return false;
+@@ -583,25 +624,31 @@
+         while (projIterator.hasNext()) {
+             Rectangle projectile = projIterator.next();
+             Iterator<Enemy> minionIterator = minionEnemies.iterator();
++            boolean projectileHitThisPass = false;
+             while (minionIterator.hasNext()) {
+                 Enemy minion = minionIterator.next();
+                 if (minion.getNode() != null && minion.isAlive() && projectile.getBoundsInParent().intersects(minion.getNode().getBoundsInParent())) {
+                     minion.takeHit();
+                     if (!minion.isAlive()) {
+-                        minionIterator.remove(); entityManager.getGamePane().getChildren().remove(minion.getNode()); uiManager.addScore(minion.getPoints());
++                        minionIterator.remove();
++                        entityManager.getGamePane().getChildren().remove(minion.getNode());
++                        uiManager.addScore(minion.getPoints());
+                     }
+-                    projIterator.remove(); entityManager.getGamePane().getChildren().remove(projectile);
+-                    hitDetectedOverall = true; break;
++                    hitDetectedOverall = true;
++                    projectileHitThisPass = true;
++                    break;
+                 }
+             }
+-            if(hitDetectedOverall && !projIterator.hasNext()) break; // if a hit was made and it was the last projectile
+         }
+         return hitDetectedOverall;
+     }
+     public boolean checkPlayerVsMinionCollisions(Player player) {
+         if (player == null || player.getNode() == null) return false;
+         for (Enemy minion : minionEnemies) {
+-            if (minion.getNode() != null && minion.isAlive() && player.getNode().getBoundsInParent().intersects(minion.getNode().getBoundsInParent())) return true;
++            if (minion.getNode() != null && minion.isAlive() &&
++                    player.getNode().getBoundsInParent().intersects(minion.getNode().getBoundsInParent())) {
++                return true;
++            }
+         }
+         return false;
+     }
+@@ -613,9 +660,14 @@
+         bossIsOffScreen = false;
+         isBossDivingDown = false;
+         currentMovementState = BossMovementState.ENTERING;
++        movementStateStartTime = System.nanoTime();
+         minionWaveCount = 0;
+         clearAllBossProjectiles();
+         clearAllMinions();
++        Enemy boss = entityManager.getBossEnemy();
++        if(boss != null && boss.getNode() != null) {
++            boss.getNode().setLayoutY(-boss.getNode().getBoundsInLocal().getHeight() - 20);
++        }
+     }
+ 
+     public List<Rectangle> getBossProjectiles() { return bossProjectiles; }

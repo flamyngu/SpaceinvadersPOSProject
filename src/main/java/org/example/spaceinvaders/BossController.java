@@ -15,6 +15,7 @@ public class BossController {
     private GameEntityManager entityManager;
     private GameDimensions gameDimensions;
     private UIManager uiManager;
+    private SoundManager soundManager;
 
     private int bossPhase = 1;
     private int bossMaxHealth = GameDimensions.BOSS_HEALTH;
@@ -25,7 +26,7 @@ public class BossController {
     private double bossTargetY = 0;
     private BossMovementState currentMovementState = BossMovementState.ENTERING;
     private long movementStateStartTime = 0;
-    private boolean isBossDivingDown = false; // For DIVE_ATTACK state
+    private boolean isBossDivingDown = false;
     private Random random = new Random();
 
     private List<Rectangle> bossProjectiles = new ArrayList<>();
@@ -42,10 +43,11 @@ public class BossController {
         DIAGONAL_SWEEP, FORMATION_ATTACK, SWARM_ATTACK, BOUNCING_PATTERN
     }
 
-    public BossController(GameEntityManager entityManager, GameDimensions gameDimensions, UIManager uiManager) {
+    public BossController(GameEntityManager entityManager, GameDimensions gameDimensions, UIManager uiManager, SoundManager soundManager) {
         this.entityManager = entityManager;
         this.gameDimensions = gameDimensions;
         this.uiManager = uiManager;
+        this.soundManager = soundManager;
     }
 
     public void initializeBoss() {
@@ -78,17 +80,20 @@ public class BossController {
         if (boss == null || boss.getNode() == null || !entityManager.isBossActive()) {
             return;
         }
+        double dtScaledForBossBody = deltaTime * 60.0;
+        if (dtScaledForBossBody <= 0) dtScaledForBossBody = 1.0;
+
         if (bossIsRetreating) {
-            updateRetreatMovement(now, deltaTime, boss);
+            updateRetreatMovement(now, dtScaledForBossBody, boss);
             updateMinionWaves(now, deltaTime);
         } else {
-            updateActiveBossMovement(now, deltaTime, boss);
+            updateActiveBossMovement(now, dtScaledForBossBody, boss);
             updateBossShooting(now, boss);
         }
         updateBossProjectiles(deltaTime);
     }
 
-    private void updateActiveBossMovement(long now, double deltaTime, Enemy boss) {
+    private void updateActiveBossMovement(long now, double dtScaled, Enemy boss) {
         Node bossNode = boss.getNode();
         long timeSinceStateStart = now - movementStateStartTime;
 
@@ -97,7 +102,7 @@ public class BossController {
                 double entrySpeed = gameDimensions.getHeight() * 0.001;
                 double targetEntryY = gameDimensions.getHeight() * 0.15;
                 if (bossNode.getLayoutY() < targetEntryY) {
-                    bossNode.setLayoutY(bossNode.getLayoutY() + entrySpeed * deltaTime * 60);
+                    bossNode.setLayoutY(bossNode.getLayoutY() + entrySpeed * dtScaled);
                 } else {
                     bossNode.setLayoutY(targetEntryY);
                     changeMovementState(BossMovementState.HOVERING, now);
@@ -126,18 +131,18 @@ public class BossController {
                 break;
             case DIVE_ATTACK:
                 double diveSpeed = gameDimensions.getHeight() * 0.003;
-                double hoverY = gameDimensions.getHeight() * 0.15;
+                double hoverYReturn = gameDimensions.getHeight() * 0.15;
 
                 if (isBossDivingDown) {
-                    bossNode.setLayoutY(bossNode.getLayoutY() + diveSpeed * deltaTime * 60);
+                    bossNode.setLayoutY(bossNode.getLayoutY() + diveSpeed * dtScaled);
                     if (bossNode.getLayoutY() >= bossTargetY) {
                         bossNode.setLayoutY(bossTargetY);
                         isBossDivingDown = false;
                     }
                 } else {
-                    bossNode.setLayoutY(bossNode.getLayoutY() - diveSpeed * deltaTime * 60);
-                    if (bossNode.getLayoutY() <= hoverY) {
-                        bossNode.setLayoutY(hoverY);
+                    bossNode.setLayoutY(bossNode.getLayoutY() - diveSpeed * dtScaled);
+                    if (bossNode.getLayoutY() <= hoverYReturn) {
+                        bossNode.setLayoutY(hoverYReturn);
                         changeMovementState(BossMovementState.HOVERING, now);
                     }
                 }
@@ -148,24 +153,17 @@ public class BossController {
         }
     }
 
-    private void updateRetreatMovement(long now, double deltaTime, Enemy boss) {
+    private void updateRetreatMovement(long now, double dtScaled, Enemy boss) {
         Node bossNode = boss.getNode();
         if (!bossIsOffScreen) {
             double retreatSpeed = gameDimensions.getHeight() * 0.002;
-            bossNode.setLayoutY(bossNode.getLayoutY() - retreatSpeed * deltaTime * 60);
+            bossNode.setLayoutY(bossNode.getLayoutY() - retreatSpeed * dtScaled);
             if (bossNode.getLayoutY() + bossNode.getBoundsInLocal().getHeight() < 0) {
                 bossIsOffScreen = true;
-                startMinionWave(); // Start the first minion wave when boss is off-screen
+                startMinionWave();
             }
         } else {
-            // If boss is off-screen and all its minions are defeated, and not loading next regular wave
             if (minionEnemies.isEmpty() && !entityManager.isLoadingNextWave()) {
-                // Decide whether to spawn another minion wave or return the boss
-                // For simplicity, let's assume we spawn a limited number of minion waves, e.g., 1 or 2.
-                // Or, the boss returns immediately after the first minion wave is cleared.
-                // Current logic: boss returns after the spawned minion wave is cleared.
-                // If you want multiple minion waves before boss returns, you'd call startMinionWave() again here
-                // under certain conditions (e.g., if minionWaveCount < MAX_MINION_WAVES_PER_RETREAT).
                 returnBossForNextPhase(now);
             }
         }
@@ -181,6 +179,9 @@ public class BossController {
         if (now - lastBossShootTime > shootCooldown) {
             shootBossProjectile(boss);
             lastBossShootTime = now;
+            if (soundManager != null) {
+                soundManager.playBossShoot();
+            }
         }
     }
 
@@ -242,15 +243,16 @@ public class BossController {
         double dx = targetX - startX;
         double dy = targetY - startY;
         double distance = Math.sqrt(dx * dx + dy * dy);
-        double projectileSpeed = gameDimensions.getProjectileSpeed() * 0.8;
+
+        double projectileSpeedPerTick = gameDimensions.getProjectileSpeed() * 0.8;
         if (bossPhase == 3) {
-            projectileSpeed *= 1.15;
+            projectileSpeedPerTick *= 1.15;
         }
 
         if (distance > 0) {
-            projectile.setUserData(new double[]{dx / distance * projectileSpeed, dy / distance * projectileSpeed});
+            projectile.setUserData(new double[]{dx / distance * projectileSpeedPerTick, dy / distance * projectileSpeedPerTick});
         } else {
-            projectile.setUserData(new double[]{0, projectileSpeed});
+            projectile.setUserData(new double[]{0, projectileSpeedPerTick});
         }
         bossProjectiles.add(projectile);
         entityManager.getGamePane().getChildren().add(projectile);
@@ -260,9 +262,10 @@ public class BossController {
         Iterator<Rectangle> iterator = bossProjectiles.iterator();
         while (iterator.hasNext()) {
             Rectangle projectile = iterator.next();
-            double[] velocity = (double[]) projectile.getUserData();
-            projectile.setLayoutX(projectile.getLayoutX() + velocity[0] * deltaTime * 60);
-            projectile.setLayoutY(projectile.getLayoutY() + velocity[1] * deltaTime * 60);
+            double[] velocityPerTick = (double[]) projectile.getUserData();
+
+            projectile.setLayoutX(projectile.getLayoutX() + velocityPerTick[0]);
+            projectile.setLayoutY(projectile.getLayoutY() + velocityPerTick[1]);
 
             if (projectile.getLayoutY() > gameDimensions.getHeight() + 50 ||
                     projectile.getLayoutY() < -projectile.getHeight() - 50 ||
@@ -294,47 +297,42 @@ public class BossController {
         isBossDivingDown = false;
         currentMovementState = BossMovementState.RETREATING;
         movementStateStartTime = System.nanoTime();
-        minionWaveCount = 0; // Reset minion wave counter for this retreat sequence
+        minionWaveCount = 0;
         String message = switch (bossPhase) {
             case 1 -> "Boss retreating... Reinforcements incoming!";
             case 2 -> "Boss retreating... Prepare for the worst!";
             default -> "Boss retreating...";
         };
         uiManager.showPopupMessage(message, 2.0);
-        // Note: The first minion wave is triggered in updateRetreatMovement when boss is off-screen.
+
+        if (soundManager != null) {
+            soundManager.playBossScared();
+        }
     }
 
     private void startMinionWave() {
-        minionWaveCount++; // Increment for tracking, though type selection is random now
+        minionWaveCount++;
         minionWaveStartTime = System.nanoTime();
 
         List<MinionWaveType> possibleTypesForThisPhase = new ArrayList<>();
-
-        // 'bossPhase' here refers to the phase the boss JUST COMPLETED and is retreating from
         switch (bossPhase) {
-            case 1: // Minions after Boss Phase 1 is defeated
+            case 1:
                 possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP);
                 possibleTypesForThisPhase.add(MinionWaveType.FORMATION_ATTACK);
-                // You can add more types to this pool if you want more variety after phase 1
                 break;
-            case 2: // Minions after Boss Phase 2 is defeated
+            case 2:
                 possibleTypesForThisPhase.add(MinionWaveType.SWARM_ATTACK);
                 possibleTypesForThisPhase.add(MinionWaveType.BOUNCING_PATTERN);
-                // Example: Make DIAGONAL_SWEEP also possible after phase 2
-                // possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP);
                 break;
             default:
-                // Fallback if somehow called for phase 3 retreat (game usually ends)
-                // Or if you have more than 3 boss phases and haven't defined pools for them.
-                possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP); // Default to one type
+                possibleTypesForThisPhase.add(MinionWaveType.DIAGONAL_SWEEP);
                 break;
         }
 
         if (!possibleTypesForThisPhase.isEmpty()) {
             currentMinionWaveType = possibleTypesForThisPhase.get(random.nextInt(possibleTypesForThisPhase.size()));
         } else {
-            // This should ideally not be reached if the switch above is comprehensive for active boss phases
-            currentMinionWaveType = MinionWaveType.DIAGONAL_SWEEP; // Absolute fallback
+            currentMinionWaveType = MinionWaveType.DIAGONAL_SWEEP;
             System.err.println("BossController.startMinionWave(): No possible minion types found for bossPhase " +
                     bossPhase + ", defaulting to DIAGONAL_SWEEP.");
         }
@@ -355,7 +353,6 @@ public class BossController {
         }
     }
 
-    // --- Minion Spawning Methods (with phase-dependent counts) ---
     private void spawnDiagonalSweepMinions() {
         int minionCount;
         switch (this.bossPhase) {
@@ -436,7 +433,11 @@ public class BossController {
 
     private void updateMinionWaves(long now, double deltaTime) {
         Iterator<Enemy> iterator = minionEnemies.iterator();
-        double baseSpeedY = gameDimensions.getHeight() * 0.0015 * deltaTime * 60;
+
+        double dtGameTickScaling = deltaTime * 60.0;
+        if (dtGameTickScaling <= 0) {
+            dtGameTickScaling = 1.0;
+        }
 
         while (iterator.hasNext()) {
             Enemy minion = iterator.next();
@@ -447,12 +448,15 @@ public class BossController {
             }
             double[] userData = (double[]) minionNode.getUserData();
             boolean shouldRemove = false;
+
             switch (currentMinionWaveType) {
                 case DIAGONAL_SWEEP:
                     double dirXFactor = userData[0];
-                    double speedXDiagonal = gameDimensions.getWidth() * 0.002 * deltaTime * 60;
-                    minionNode.setLayoutX(minionNode.getLayoutX() + dirXFactor * speedXDiagonal);
-                    minionNode.setLayoutY(minionNode.getLayoutY() + speedXDiagonal * 0.5);
+                    double baseSpeedXDiagonal = gameDimensions.getWidth() * 0.002;
+                    double moveX = dirXFactor * baseSpeedXDiagonal * dtGameTickScaling;
+                    double moveY = baseSpeedXDiagonal * 0.5 * dtGameTickScaling;
+                    minionNode.setLayoutX(minionNode.getLayoutX() + moveX);
+                    minionNode.setLayoutY(minionNode.getLayoutY() + moveY);
                     if (minionNode.getLayoutY() > gameDimensions.getHeight() + 20 ||
                             (dirXFactor > 0 && minionNode.getLayoutX() > gameDimensions.getWidth() + 20) ||
                             (dirXFactor < 0 && minionNode.getLayoutX() < -minionNode.getBoundsInLocal().getWidth() - 20)) {
@@ -460,18 +464,22 @@ public class BossController {
                     }
                     break;
                 case FORMATION_ATTACK:
-                    minionNode.setLayoutY(minionNode.getLayoutY() + baseSpeedY);
+                    double baseFormationSpeedY = gameDimensions.getHeight() * 0.0015;
+                    minionNode.setLayoutY(minionNode.getLayoutY() + baseFormationSpeedY * dtGameTickScaling);
                     if (minionNode.getLayoutY() > gameDimensions.getHeight() + 20) shouldRemove = true;
                     break;
                 case SWARM_ATTACK:
                     double vx = userData[0]; double vy = userData[1];
-                    vx += (random.nextDouble() - 0.5) * 0.1; vy += (random.nextDouble() - 0.5) * 0.05;
+                    vx += (random.nextDouble() - 0.5) * 0.1;
+                    vy += (random.nextDouble() - 0.5) * 0.05;
                     vx = Math.max(-2.5, Math.min(2.5, vx)); vy = Math.max(0.4, Math.min(3.0, vy));
                     userData[0] = vx; userData[1] = vy;
-                    double actualSpeedXSwarm = gameDimensions.getEnemyWidth() * 0.04 * vx * deltaTime * 60;
-                    double actualSpeedYSwarm = gameDimensions.getEnemyHeight() * 0.04 * vy * deltaTime * 60;
-                    minionNode.setLayoutX(minionNode.getLayoutX() + actualSpeedXSwarm);
-                    minionNode.setLayoutY(minionNode.getLayoutY() + actualSpeedYSwarm);
+
+                    double baseSwarmSpeedX = gameDimensions.getEnemyWidth() * 0.04 * vx;
+                    double baseSwarmSpeedY = gameDimensions.getEnemyHeight() * 0.04 * vy;
+                    minionNode.setLayoutX(minionNode.getLayoutX() + baseSwarmSpeedX * dtGameTickScaling);
+                    minionNode.setLayoutY(minionNode.getLayoutY() + baseSwarmSpeedY * dtGameTickScaling);
+
                     if (minionNode.getLayoutX() < 0) {
                         minionNode.setLayoutX(0); userData[0] = Math.abs(vx * 0.8);
                     } else if (minionNode.getLayoutX() > gameDimensions.getWidth() - minionNode.getBoundsInLocal().getWidth()) {
@@ -485,7 +493,10 @@ public class BossController {
                     double bounceAmplitude = gameDimensions.getWidth() * 0.15;
                     double timeInSeconds = (now - phaseTimeOffsetNanos) / 1_000_000_000.0;
                     double bounceFrequencyFactor = 1.5;
-                    minionNode.setLayoutY(minionNode.getLayoutY() + baseSpeedY * 0.8);
+
+                    double baseBouncingSpeedY = gameDimensions.getHeight() * 0.0015 * 0.8;
+                    minionNode.setLayoutY(minionNode.getLayoutY() + baseBouncingSpeedY * dtGameTickScaling);
+
                     double newBounceX = initialXForBounce + Math.sin(timeInSeconds * bounceFrequencyFactor * Math.PI * 2) * bounceAmplitude;
                     newBounceX = Math.max(0, Math.min(newBounceX, gameDimensions.getWidth() - minionNode.getBoundsInLocal().getWidth()));
                     minionNode.setLayoutX(newBounceX);
@@ -525,7 +536,8 @@ public class BossController {
         minionWaveCount = 0;
         updateBossAppearance();
         String phaseMessage = switch (bossPhase) {
-            case 2 -> "Boss Phase 2 - More Power!"; case 3 -> "Boss Phase 3 - Final Stand!";
+            case 2 -> "Boss Phase 2 - More Power!";
+            case 3 -> "Boss Phase 3 - Final Stand!";
             default -> "Boss has returned!";
         };
         uiManager.showPopupMessage(phaseMessage, 2.5);
@@ -536,8 +548,10 @@ public class BossController {
         if (boss == null || boss.getNode() == null) return;
         Rectangle bossRect = (Rectangle) boss.getNode();
         Color phaseColor = switch (bossPhase) {
-            case 1 -> Color.rgb(100, 0, 0); case 2 -> Color.rgb(100, 0, 100);
-            case 3 -> Color.rgb(80, 0, 80, 0.9); default -> Color.DARKRED;
+            case 1 -> Color.rgb(100, 0, 0);
+            case 2 -> Color.rgb(100, 0, 100);
+            case 3 -> Color.rgb(80, 0, 80, 0.9);
+            default -> Color.DARKRED;
         };
         bossRect.setFill(phaseColor);
     }
@@ -547,7 +561,13 @@ public class BossController {
         Rectangle bossRect = (Rectangle) boss.getNode();
         bossRect.setFill(Color.WHITE);
         PauseTransition flash = new PauseTransition(Duration.millis(80));
-        flash.setOnFinished(e -> updateBossAppearance());
+        flash.setOnFinished(e -> {
+            if (boss.isAlive()) {
+                updateBossAppearance();
+            } else {
+                updateBossAppearance();
+            }
+        });
         flash.play();
     }
     private void changeMovementState(BossMovementState newState, long now) {
@@ -560,11 +580,19 @@ public class BossController {
 
     public void clearAllBossProjectiles() {
         Iterator<Rectangle> it = bossProjectiles.iterator();
-        while(it.hasNext()){ Rectangle p = it.next(); entityManager.getGamePane().getChildren().remove(p); it.remove(); }
+        while(it.hasNext()){
+            Rectangle p = it.next();
+            entityManager.getGamePane().getChildren().remove(p);
+            it.remove();
+        }
     }
     public void clearAllMinions() {
         Iterator<Enemy> it = minionEnemies.iterator();
-        while(it.hasNext()){ Enemy m = it.next(); if(m.getNode() != null) entityManager.getGamePane().getChildren().remove(m.getNode()); it.remove(); }
+        while(it.hasNext()){
+            Enemy m = it.next();
+            if(m.getNode() != null) entityManager.getGamePane().getChildren().remove(m.getNode());
+            it.remove();
+        }
     }
     public boolean checkBossProjectileCollisions(Player player) {
         if (player == null || player.getNode() == null) return false;
@@ -572,7 +600,9 @@ public class BossController {
         while (iterator.hasNext()) {
             Rectangle projectile = iterator.next();
             if (projectile.getBoundsInParent().intersects(player.getNode().getBoundsInParent())) {
-                iterator.remove(); entityManager.getGamePane().getChildren().remove(projectile); return true;
+                iterator.remove();
+                entityManager.getGamePane().getChildren().remove(projectile);
+                return true;
             }
         }
         return false;
@@ -588,20 +618,24 @@ public class BossController {
                 if (minion.getNode() != null && minion.isAlive() && projectile.getBoundsInParent().intersects(minion.getNode().getBoundsInParent())) {
                     minion.takeHit();
                     if (!minion.isAlive()) {
-                        minionIterator.remove(); entityManager.getGamePane().getChildren().remove(minion.getNode()); uiManager.addScore(minion.getPoints());
+                        minionIterator.remove();
+                        entityManager.getGamePane().getChildren().remove(minion.getNode());
+                        uiManager.addScore(minion.getPoints());
                     }
-                    projIterator.remove(); entityManager.getGamePane().getChildren().remove(projectile);
-                    hitDetectedOverall = true; break;
+                    hitDetectedOverall = true;
+                    break;
                 }
             }
-            if(hitDetectedOverall && !projIterator.hasNext()) break; // if a hit was made and it was the last projectile
         }
         return hitDetectedOverall;
     }
     public boolean checkPlayerVsMinionCollisions(Player player) {
         if (player == null || player.getNode() == null) return false;
         for (Enemy minion : minionEnemies) {
-            if (minion.getNode() != null && minion.isAlive() && player.getNode().getBoundsInParent().intersects(minion.getNode().getBoundsInParent())) return true;
+            if (minion.getNode() != null && minion.isAlive() &&
+                    player.getNode().getBoundsInParent().intersects(minion.getNode().getBoundsInParent())) {
+                return true;
+            }
         }
         return false;
     }
@@ -613,9 +647,14 @@ public class BossController {
         bossIsOffScreen = false;
         isBossDivingDown = false;
         currentMovementState = BossMovementState.ENTERING;
+        movementStateStartTime = System.nanoTime();
         minionWaveCount = 0;
         clearAllBossProjectiles();
         clearAllMinions();
+        Enemy boss = entityManager.getBossEnemy();
+        if(boss != null && boss.getNode() != null) {
+            boss.getNode().setLayoutY(-boss.getNode().getBoundsInLocal().getHeight() - 20);
+        }
     }
 
     public List<Rectangle> getBossProjectiles() { return bossProjectiles; }

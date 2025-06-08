@@ -21,7 +21,7 @@ public class GameEntityManager {
     private int currentWaveNumber = 0;
     private boolean isLoadingNextWave = false;
     private boolean bossHasSpawnedThisGameCycle = false;
-    private boolean bossWasJustDefeated = false; // True when final boss phase is cleared
+    private boolean bossWasJustDefeated = false;
     private double enemyMovementDirection = 1.0;
     private double enemyGroupSpeedX;
     private double enemyGroupSpeedY;
@@ -31,7 +31,7 @@ public class GameEntityManager {
     private List<Enemy> enemies = new ArrayList<>();
     private List<Rectangle> playerProjectiles = new ArrayList<>();
 
-    public GameEntityManager(Pane gamePane, GameDimensions gameDimensions, UIManager uiManager) {
+    public GameEntityManager(Pane gamePane, GameDimensions gameDimensions, UIManager uiManager, SoundManager soundManager) {
         this.gamePane = gamePane;
         this.gameDimensions = gameDimensions;
         this.uiManager = uiManager;
@@ -40,26 +40,44 @@ public class GameEntityManager {
         if(this.enemyGroupSpeedX < 1.0) this.enemyGroupSpeedX = 1.0;
         this.enemyGroupSpeedY = this.gameDimensions.getEnemyHeight() * 0.5;
 
-        this.bossController = new BossController(this, gameDimensions, uiManager);
+        this.bossController = new BossController(this, gameDimensions, uiManager, soundManager);
+        resetInitialStateFlags();
+        System.out.println("GameEntityManager: Konstruktor - gamePane Children: " + this.gamePane.getChildren().size());
     }
+
+    private void resetInitialStateFlags() {
+        this.bossEnemy = null;
+        this.bossActive = false;
+        this.currentWaveNumber = 0;
+        this.isLoadingNextWave = false;
+        this.bossHasSpawnedThisGameCycle = false;
+        this.bossWasJustDefeated = false;
+        this.enemyMovementDirection = 1.0;
+        this.moveDownNextCycle = false;
+        this.player = null;
+    }
+
 
     public void createPlayer() {
         this.player = new Player(gameDimensions);
-        gamePane.getChildren().add(player.getNode());
+        if (!gamePane.getChildren().contains(player.getNode())) {
+            gamePane.getChildren().add(player.getNode());
+        } else {
+            System.out.println("WARNUNG: Spieler-Node war bereits in gamePane in createPlayer!");
+        }
+        System.out.println("GameEntityManager.createPlayer(): Spieler zu gamePane hinzugefügt. gamePane Children: " + gamePane.getChildren().size());
     }
 
     public void createEnemies() {
+        System.out.println("GameEntityManager.createEnemies(): Start. Aktuelle Gegner in Liste: " + enemies.size() + ", Kinder in gamePane: " + gamePane.getChildren().size());
+
         if (bossActive) {
-            System.out.println("GameEntityManager.createEnemies(): Boss is active, not creating normal enemies.");
-            // If createEnemies is called and boss is active, it implies a logic flow issue elsewhere,
-            // as the calling method should ideally prevent this.
-            // isLoadingNextWave will be handled by the caller in such a scenario.
+            System.out.println("GameEntityManager.createEnemies(): Boss ist aktiv, keine normalen Gegner erstellt.");
             return;
         }
 
-        // Clear existing enemies - iterate over a copy to avoid ConcurrentModificationException
         for (Enemy oldEnemy : new ArrayList<>(enemies)) {
-            if (oldEnemy.getNode() != null) {
+            if (oldEnemy.getNode() != null && gamePane.getChildren().contains(oldEnemy.getNode())) {
                 gamePane.getChildren().remove(oldEnemy.getNode());
             }
         }
@@ -76,13 +94,18 @@ public class GameEntityManager {
                 double y = startY + row * (gameDimensions.getEnemyHeight() + gameDimensions.getEnemySpacingY());
                 enemyShape.setLayoutX(x);
                 enemyShape.setLayoutY(y);
+                // System.out.println("  Gegner erstellt: Reihe=" + row + ", Spalte=" + col + ", Y-Position=" + y +
+                //                  ", Höhe=" + enemyShape.getBoundsInLocal().getHeight()); // Log von vorheriger Anfrage
                 Enemy newLogicalEnemy = new Enemy(enemyShape, 1, GameDimensions.POINTS_PER_ENEMY);
                 enemies.add(newLogicalEnemy);
-                gamePane.getChildren().add(enemyShape);
+                if (!gamePane.getChildren().contains(enemyShape)) {
+                    gamePane.getChildren().add(enemyShape);
+                } else {
+                    System.out.println("WARNUNG: Gegner-Node war bereits in gamePane in createEnemies!");
+                }
             }
         }
-        System.out.println("GameEntityManager.createEnemies(): Created " + enemies.size() + " enemies for wave " + currentWaveNumber);
-        // isLoadingNextWave = false; // DO NOT set here. The calling PauseTransition or method will handle it.
+        System.out.println("GameEntityManager.createEnemies(): " + enemies.size() + " Gegner erstellt und zu gamePane hinzugefügt für Welle " + currentWaveNumber + ". gamePane Children: " + gamePane.getChildren().size());
     }
 
     public void createProjectile() {
@@ -96,13 +119,18 @@ public class GameEntityManager {
     }
 
     public void createBoss() {
-        if(bossActive){ // Already active, do nothing
+        if(bossActive){
             return;
         }
-        for(Enemy oldEnemy : new ArrayList<>(enemies)) { // Clear normal enemies
-            if(oldEnemy.getNode() != null) gamePane.getChildren().remove(oldEnemy.getNode());
+        System.out.println("createBoss: Entferne normale Gegner. enemies.size()=" + enemies.size());
+        for(Enemy oldEnemy : new ArrayList<>(enemies)) {
+            if(oldEnemy.getNode() != null && gamePane.getChildren().contains(oldEnemy.getNode())) {
+                gamePane.getChildren().remove(oldEnemy.getNode());
+            }
         }
         enemies.clear();
+        System.out.println("createBoss: Normale Gegner entfernt. enemies.size()=" + enemies.size());
+
 
         double bossWidth = gameDimensions.getEnemyWidth() * GameDimensions.BOSS_WIDTH_MULTIPLIER;
         double bossHeight = gameDimensions.getEnemyHeight() * GameDimensions.BOSS_HEIGHT_MULTIPLIER;
@@ -111,32 +139,38 @@ public class GameEntityManager {
         this.bossEnemy = new Enemy(bossShape, GameDimensions.BOSS_HEALTH, GameDimensions.BOSS_POINTS);
         this.bossActive = true;
         gamePane.getChildren().add(bossShape);
-        uiManager.showBossSpawnMessage(); // This message has its own duration
+        uiManager.showBossSpawnMessage();
 
         bossController.initializeBoss();
 
-        isLoadingNextWave = false; // Boss creation sequence is complete
+        isLoadingNextWave = false;
+        System.out.println("createBoss: Boss erstellt. gamePane Children: " + gamePane.getChildren().size());
     }
 
     public void spawnEnemyWaveInitial() {
+        System.out.println("spawnEnemyWaveInitial: Start. enemies.isEmpty()=" + enemies.isEmpty() + ", bossActive=" + bossActive + ", isLoadingNextWave=" + isLoadingNextWave);
         if (enemies.isEmpty() && !bossActive && !isLoadingNextWave) {
-            isLoadingNextWave = true; // Mark as loading
+            isLoadingNextWave = true;
             currentWaveNumber = 1;
-            createEnemies(); // Synchronous call
+            createEnemies();
             uiManager.showWaveStartMessage(currentWaveNumber);
-            isLoadingNextWave = false; // Done loading initial wave
+            isLoadingNextWave = false;
+        } else {
+            System.out.println("spawnEnemyWaveInitial: Bedingungen nicht erfüllt, keine Welle gespawnt.");
+            if (!enemies.isEmpty()) System.out.println("  Grund: enemies nicht leer, size=" + enemies.size());
+            if (bossActive) System.out.println("  Grund: bossActive ist true");
+            if (isLoadingNextWave) System.out.println("  Grund: isLoadingNextWave ist true");
         }
     }
 
     public void spawnNextWaveOrBoss() {
-        if(isLoadingNextWave) { return; } // Guard: already processing a wave/boss spawn
-        isLoadingNextWave = true;         // Mark as loading for this new spawn sequence
+        if(isLoadingNextWave) { return; }
+        isLoadingNextWave = true;
 
-        if(!bossWasJustDefeated){ // Don't increment wave if boss was just beaten (game ends)
+        if(!bossWasJustDefeated){
             currentWaveNumber++;
         } else {
-            // If boss was just defeated, we shouldn't be spawning a new wave or boss
-            isLoadingNextWave = false; // Reset flag and exit
+            isLoadingNextWave = false;
             return;
         }
 
@@ -146,20 +180,18 @@ public class GameEntityManager {
         }
 
         if(spawnBossNow){
-            // The UIManager.showBossSpawnMessage() is called within createBoss()
-            // and has its own 2-second duration. The PauseTransition here is for the delay *before* boss creation.
             PauseTransition bossPause = new PauseTransition(Duration.seconds(2));
             bossPause.setOnFinished(event -> {
                 bossHasSpawnedThisGameCycle = true;
-                createBoss(); // createBoss() will set isLoadingNextWave = false upon completion
+                createBoss();
             });
             bossPause.play();
         }else{
-            uiManager.showWaveClearMessage(currentWaveNumber); // Shows "Wave Cleared! Get Ready for Wave X" (2s duration)
-            PauseTransition wavePause = new PauseTransition(Duration.seconds(2)); // Match UI message duration
+            uiManager.showWaveClearMessage(currentWaveNumber);
+            PauseTransition wavePause = new PauseTransition(Duration.seconds(2));
             wavePause.setOnFinished(event -> {
-                createEnemies();           // Create the enemies for the next wave
-                isLoadingNextWave = false; // NOW it's safe to say we are no longer loading this wave.
+                createEnemies();
+                isLoadingNextWave = false;
             });
             wavePause.play();
         }
@@ -171,26 +203,28 @@ public class GameEntityManager {
 
     public void removeEnemy(Enemy enemy) {
         if (enemy != null) {
-            if(enemy.getNode() != null) gamePane.getChildren().remove(enemy.getNode());
+            if(enemy.getNode() != null && gamePane.getChildren().contains(enemy.getNode())) {
+                gamePane.getChildren().remove(enemy.getNode());
+            }
             enemies.remove(enemy);
         }
     }
 
     public void removeProjectileNode(Node projectileNode) {
-        if (projectileNode != null) {
+        if (projectileNode != null && gamePane.getChildren().contains(projectileNode)) {
             gamePane.getChildren().remove(projectileNode);
         }
     }
 
     public void bossDefeated() {
-        if(bossEnemy != null && bossEnemy.getNode() != null) {
+        if(bossEnemy != null && bossEnemy.getNode() != null && gamePane.getChildren().contains(bossEnemy.getNode())) {
             gamePane.getChildren().remove(bossEnemy.getNode());
         }
         this.bossActive = false;
         this.bossEnemy = null;
         setBossAlreadySpawnedThisCycle(true);
         this.bossWasJustDefeated = true;
-        isLoadingNextWave = false; // No longer loading anything, game might end or transition
+        isLoadingNextWave = false;
     }
 
     public void setBossAlreadySpawnedThisCycle(boolean status){
@@ -198,37 +232,44 @@ public class GameEntityManager {
     }
 
     public void resetGame(){
-        for(Enemy enemy : new ArrayList<>(enemies)) { // Iterate over a copy
-            if(enemy.getNode()!=null)gamePane.getChildren().remove(enemy.getNode());
+        System.out.println("GameEntityManager.resetGame(): Start. Kinder in gamePane VOR Reset: " + gamePane.getChildren().size());
+        System.out.println("  enemies.size() VOR Reset: " + enemies.size());
+        System.out.println("  playerProjectiles.size() VOR Reset: " + playerProjectiles.size());
+
+        for(Enemy enemy : new ArrayList<>(enemies)) {
+            if(enemy.getNode()!=null && gamePane.getChildren().contains(enemy.getNode())) {
+                gamePane.getChildren().remove(enemy.getNode());
+            }
         }
         enemies.clear();
-        for(Rectangle projectile : new ArrayList<>(playerProjectiles)){ // Iterate over a copy
-            if(projectile!=null)gamePane.getChildren().remove(projectile);
+
+        for(Rectangle projectile : new ArrayList<>(playerProjectiles)){
+            if(projectile!=null && gamePane.getChildren().contains(projectile)) {
+                gamePane.getChildren().remove(projectile);
+            }
         }
         playerProjectiles.clear();
 
-        if(bossEnemy!=null &&bossEnemy.getNode()!=null){
+        if(bossEnemy!=null && bossEnemy.getNode()!=null && gamePane.getChildren().contains(bossEnemy.getNode())){
             gamePane.getChildren().remove(bossEnemy.getNode());
         }
-        bossEnemy  = null;
-        bossActive = false;
-        bossWasJustDefeated = false;
-        bossHasSpawnedThisGameCycle = false;
+        if(player != null && player.getNode() != null && gamePane.getChildren().contains(player.getNode())){
+            gamePane.getChildren().remove(player.getNode());
+        }
 
-        currentWaveNumber = 0; // Reset wave number
-        isLoadingNextWave = false; // Reset loading flag
-        if(player != null && player.getNode() != null)gamePane.getChildren().remove(player.getNode());
-        player = null;
-        this.enemyMovementDirection = 1.0;
-        this.moveDownNextCycle = false;
+        resetInitialStateFlags();
 
         if (bossController != null) {
             bossController.resetBoss();
         }
+        System.out.println("GameEntityManager.resetGame(): Abgeschlossen. Kinder in gamePane NACH Reset: " + gamePane.getChildren().size());
+        System.out.println("  enemies.size() NACH Reset: " + enemies.size());
+        System.out.println("  playerProjectiles.size() NACH Reset: " + playerProjectiles.size());
     }
 
+
     public void removeProjectile(Node projectileNode) {
-        if (projectileNode != null) {
+        if (projectileNode != null && gamePane.getChildren().contains(projectileNode)) {
             gamePane.getChildren().remove(projectileNode);
             if (projectileNode instanceof Rectangle) {
                 playerProjectiles.remove((Rectangle) projectileNode);
@@ -237,7 +278,7 @@ public class GameEntityManager {
     }
 
     public void removeEnemyNode(Node enemyNode) {
-        if(enemyNode != null){
+        if(enemyNode != null && gamePane.getChildren().contains(enemyNode)){
             gamePane.getChildren().remove(enemyNode);
         }
     }

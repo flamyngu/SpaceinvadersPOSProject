@@ -1,5 +1,6 @@
 package org.example.spaceinvaders;
 import javafx.scene.media.AudioClip;
+
 public class VoiceProfile {
     private final String displayName;
     private final String introClipPath;
@@ -23,6 +24,7 @@ public class VoiceProfile {
             this.introAudioClip = null;
         }
     }
+
     public String getDisplayName() {
         return displayName;
     }
@@ -39,7 +41,6 @@ public class VoiceProfile {
         return infoText;
     }
 
-    // Optional: Override toString() für Debugging
     @Override
     public String toString() {
         return displayName;

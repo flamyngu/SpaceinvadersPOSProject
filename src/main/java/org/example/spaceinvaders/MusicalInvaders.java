@@ -22,10 +22,7 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-// Importiere VoiceProfile korrekt, z.B. wenn es in einem Unterordner 'menu' liegt:
-// import org.example.spaceinvaders.menu.VoiceProfile;
-
-import java.util.Objects; // Für Objects.requireNonNull
+import java.util.Objects;
 
 public class MusicalInvaders extends Application {
 
@@ -37,10 +34,14 @@ public class MusicalInvaders extends Application {
     private StackPane pauseMenuPane;
     private StackPane gameOverMenuPane;
     private StackPane creditsMenuPane;
+    private ScrollPane creditsScrollPane;
+    private VBox creditsContentBox;
+    private Timeline creditRollTimeline;
+
     private StackPane gameRootPane;
-    private ScrollPane creditsScrollPane; // Member-Variable für Zugriff in Animation
-    private VBox creditsContentBox;       // Inhalt der Credits
-    private Timeline creditRollTimeline;  // Für die Animation// Root Pane der Spielszene, wichtig für Overlays
+    private Pane gamePane;
+    private Pane uiPane;
+
 
     private ObservableList<VoiceProfile> voiceProfiles;
     private VoiceProfile currentlyPreviewedVoice = null;
@@ -48,24 +49,24 @@ public class MusicalInvaders extends Application {
     private AudioClip currentPlayingIntro = null;
 
     private GameDimensions gameDimensions;
-    private Pane gamePane;
-    private Pane uiPane;
     private GameEntityManager entityManager;
     private GameUpdater gameUpdater;
     private UIManager gameUIManager;
     private InputHandler inputHandler;
     private AnimationTimer gameLoop;
 
-    // Konsistenter CSS-Pfad (angenommen, es liegt direkt in resources oder resources/css)
-    private static final String MAIN_MENU_CSS_PATH = "/mainmenu.css"; // Wenn direkt in resources
-    // private static final String MAIN_MENU_CSS_PATH = "/css/mainmenu.css"; // Wenn in resources/css
+    // SoundManager Instanzen
+    private SoundManager globalSoundManager; // Für globale Sounds wie Jubel
+    private SoundManager profileSoundManager; // Für profil-spezifische SFX im Spiel
+
+
+    private static final String MAIN_MENU_CSS_PATH = "/mainmenu.css";
 
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
         this.primaryStage.setTitle("Musical Invaders");
 
-        // Programmatisches Laden der Schriftart (empfohlen)
         try {
             javafx.scene.text.Font.loadFont(getClass().getResourceAsStream("/fonts/PressStart2P-Regular.ttf"), 10);
             System.out.println("Schriftart 'Press Start 2P' programmatisch geladen.");
@@ -73,53 +74,50 @@ public class MusicalInvaders extends Application {
             System.err.println("Fehler beim programmatischen Laden der Schriftart '/fonts/PressStart2P-Regular.ttf': " + e.getMessage());
         }
 
-        loadVoiceProfiles();
-        initializeGlobalInput(primaryStage); // Globale Tasten (ESC für Pause)
-        createMenuOverlays();                // Erstellt die unsichtbaren Overlay-Panes
+        // Globale Instanz für Jubel erstellen, bevor VoiceProfiles geladen werden,
+        // da der VoiceProfile Konstruktor u.U. schon Sounds laden könnte (obwohl Jubel global ist)
+        this.globalSoundManager = new SoundManager();
 
-        changeGameState(GameState.MAIN_MENU); // Startet im Hauptmenü
-        if (mainMenuScene != null) { // Sicherstellen, dass die Menü-Szene erstellt wurde
+        loadVoiceProfiles();
+        initializeGlobalInput(primaryStage);
+        createMenuOverlays();
+
+        changeGameState(GameState.MAIN_MENU);
+        if (mainMenuScene != null) {
             Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
             primaryStage.setX((screenBounds.getWidth() - mainMenuScene.getWidth()) / 2);
             primaryStage.setY((screenBounds.getHeight() - mainMenuScene.getHeight()) / 2);
-            System.out.println("Hauptmenü-Fenster zentriert.");
         } else {
-            // Fallback, falls die Szene noch nicht da ist (sollte nicht passieren bei diesem Ablauf)
-            primaryStage.centerOnScreen(); // Einfachere Methode, falls Größe noch nicht bekannt
-            System.out.println("Hauptmenü-Fenster mit centerOnScreen() zentriert (Fallback).");
+            primaryStage.centerOnScreen();
         }
         this.primaryStage.setResizable(false);
         this.primaryStage.show();
     }
 
     private void loadVoiceProfiles() {
-        // Deine VoiceProfile-Liste...
         voiceProfiles = FXCollections.observableArrayList(
-                new VoiceProfile("Stimme von Max", "/sfx/MaxMustermann/intro_MaxMustermann.wav", "/sfx/MaxMustermann/", "Max isst gerne Pizza."),
-                new VoiceProfile("Stimme von Erika", "/sfx/ErikaMusterfrau/intro_ErikaMusterfrau.wav", "/sfx/ErikaMusterfrau/", "Erika singt gerne."),
-                new VoiceProfile("Stimme Alpha", "/sfx/StimmeAlpha/intro_StimmeAlpha.wav", "/sfx/StimmeAlpha/", "Teststimme Alpha."),
-                new VoiceProfile("Stimme Beta", "/sfx/StimmeBeta/intro_StimmeBeta.wav", "/sfx/StimmeBeta/", "Teststimme Beta."),
-                new VoiceProfile("Stimme von Max", "/sfx/MaxMustermann/intro_MaxMustermann.wav", "/sfx/MaxMustermann/", "Max isst gerne Pizza."),
-                new VoiceProfile("Stimme von Erika", "/sfx/ErikaMusterfrau/intro_ErikaMusterfrau.wav", "/sfx/ErikaMusterfrau/", "Erika singt gerne."),
-                new VoiceProfile("Stimme Alpha", "/sfx/StimmeAlpha/intro_StimmeAlpha.wav", "/sfx/StimmeAlpha/", "Teststimme Alpha."),
-                new VoiceProfile("Stimme Beta", "/sfx/StimmeBeta/intro_StimmeBeta.wav", "/sfx/StimmeBeta/", "Teststimme Beta."),
-                new VoiceProfile("Stimme von Max", "/sfx/MaxMustermann/intro_MaxMustermann.wav", "/sfx/MaxMustermann/", "Max isst gerne Pizza."),
-                new VoiceProfile("Stimme von Erika", "/sfx/ErikaMusterfrau/intro_ErikaMusterfrau.wav", "/sfx/ErikaMusterfrau/", "Erika singt gerne."),
-                new VoiceProfile("Stimme Alpha", "/sfx/StimmeAlpha/intro_StimmeAlpha.wav", "/sfx/StimmeAlpha/", "Teststimme Alpha."),
-                new VoiceProfile("Stimme Beta", "/sfx/StimmeBeta/intro_StimmeBeta.wav", "/sfx/StimmeBeta/", "Teststimme Beta."),
-                new VoiceProfile("Stimme von Max", "/sfx/MaxMustermann/intro_MaxMustermann.wav", "/sfx/MaxMustermann/", "Max isst gerne Pizza."),
-                new VoiceProfile("Stimme von Erika", "/sfx/ErikaMusterfrau/intro_ErikaMusterfrau.wav", "/sfx/ErikaMusterfrau/", "Erika singt gerne."),
-                new VoiceProfile("Stimme Alpha", "/sfx/StimmeAlpha/intro_StimmeAlpha.wav", "/sfx/StimmeAlpha/", "Teststimme Alpha."),
-                new VoiceProfile("Stimme Beta", "/sfx/StimmeBeta/intro_StimmeBeta.wav", "/sfx/StimmeBeta/", "Teststimme Beta."),
+                new VoiceProfile("Der Franzose", "/sfx/Der Franzose/Vorstellung.wav", "/sfx/Der Franzose/", "Ein Baguette, frisch aus dem Ofen heiß,\n" +
+                        "geformt von Bäckerhand mit Fleiß.\n" +
+                        "Im Laden lag es, goldbraun, ein wahrer Augenschmaus,\n" +
+                        "ich trug es stolz dann schnell nach Haus.\n" +
+                        "Die Kruste knackt, so knusprig fein,\n" +
+                        "das Inn're weich, ein lichter Schein.\n" +
+                        "Mit Butter, Käse oder pur – ein Genuss,\n" +
+                        "so endet es mit einem Kuss."),
+                new VoiceProfile("Prof. Slawitscheck", "/sfx/Prof. Slawitscheck/Introduction.wav", "/sfx/Prof. Slawitscheck/", "Erika singt gerne."),
+                new VoiceProfile("Prof. Csaszar", "/sfx/Prof. Csaszar/Introduction.wav", "/sfx/Prof. Csaszar/", "Teststimme Alpha."),
+                new VoiceProfile("Mary Fly", "/sfx/Mary Fly/Introduction.wav", "/sfx/Mary Fly/", "Teststimme Beta."),
+                new VoiceProfile("Omar Rosbal", "/sfx/Omar Rosypal/Introduction.wav", "/sfx/Omar Rosypal/", "Max isst gerne Pizza."), // Korrigierter Pfad
+                new VoiceProfile("Mhh lecka Bierchen", "/sfx/Simon Leber/Introduction.wav", "/sfx/Simon Leber/", "Erika singt gerne."),
+                new VoiceProfile("Der Japaner", "/sfx/Leo Fukahori/Introduction.wav", "/sfx/Leo Fukahori/", "Teststimme Alpha."),
+                new VoiceProfile("Fabian Meduna", "/sfx/Fabio Meduna/Introduction.wav", "/sfx/Fabio Meduna/", "Teststimme Beta."),
                 new VoiceProfile("Stimme von Max", "/sfx/MaxMustermann/intro_MaxMustermann.wav", "/sfx/MaxMustermann/", "Max isst gerne Pizza."),
                 new VoiceProfile("Stimme von Erika", "/sfx/ErikaMusterfrau/intro_ErikaMusterfrau.wav", "/sfx/ErikaMusterfrau/", "Erika singt gerne."),
                 new VoiceProfile("Stimme Alpha", "/sfx/StimmeAlpha/intro_StimmeAlpha.wav", "/sfx/StimmeAlpha/", "Teststimme Alpha."),
                 new VoiceProfile("Stimme Beta", "/sfx/StimmeBeta/intro_StimmeBeta.wav", "/sfx/StimmeBeta/", "Teststimme Beta.")
-
-                // Füge hier alle deine Profile hinzu
         );
         if (!voiceProfiles.isEmpty()) {
-            currentlyPreviewedVoice = voiceProfiles.get(0); // Standard-Preview
+            currentlyPreviewedVoice = voiceProfiles.get(0);
         }
     }
 
@@ -129,7 +127,7 @@ public class MusicalInvaders extends Application {
                 if (currentGameState == GameState.PLAYING) {
                     changeGameState(GameState.PAUSED);
                 } else if (currentGameState == GameState.PAUSED) {
-                    changeGameState(GameState.PLAYING); // Zurück zum Spiel
+                    changeGameState(GameState.PLAYING);
                 }
                 event.consume();
             }
@@ -137,11 +135,10 @@ public class MusicalInvaders extends Application {
     }
 
     private void createMenuOverlays() {
-        // PAUSE MENÜ
         pauseMenuPane = new StackPane();
         pauseMenuPane.setId("pause-menu-pane");
         Label pauseLabel = new Label("PAUSED");
-        pauseLabel.getStyleClass().add("menu-title"); // CSS-Klasse für Menütitel
+        pauseLabel.getStyleClass().add("menu-title");
         Button resumeButton = new Button("Resume");
         resumeButton.getStyleClass().add("menu-button");
         resumeButton.setOnAction(e -> changeGameState(GameState.PLAYING));
@@ -154,19 +151,13 @@ public class MusicalInvaders extends Application {
         pauseMenuPane.getChildren().add(pauseContent);
         pauseMenuPane.setVisible(false);
 
-        // GAME OVER MENÜ
         gameOverMenuPane = new StackPane();
         gameOverMenuPane.setId("game-over-menu-pane");
         Label gameOverLabel = new Label("GAME OVER");
         gameOverLabel.getStyleClass().add("menu-title");
-        Button restartButton = new Button("Try Again (Main Menu)"); // Geht erstmal zum Hauptmenü
+        Button restartButton = new Button("Try Again (Main Menu)");
         restartButton.getStyleClass().add("menu-button");
-        restartButton.setOnAction(e -> {
-            // Für einen echten Neustart mit derselben Stimme:
-            // resetGameLogic(); // Methode, die Spielvariablen zurücksetzt
-            // changeGameState(GameState.PLAYING);
-            changeGameState(GameState.MAIN_MENU); // Vorerst zurück zum Hauptmenü
-        });
+        restartButton.setOnAction(e -> changeGameState(GameState.MAIN_MENU));
         Button backToMainMenuFromGameOverButton = new Button("Back to Main Menu");
         backToMainMenuFromGameOverButton.getStyleClass().add("menu-button");
         backToMainMenuFromGameOverButton.setOnAction(e -> changeGameState(GameState.MAIN_MENU));
@@ -176,7 +167,6 @@ public class MusicalInvaders extends Application {
         gameOverMenuPane.getChildren().add(gameOverContent);
         gameOverMenuPane.setVisible(false);
 
-        // CREDITS MENÜ
         creditsMenuPane = new StackPane();
         creditsMenuPane.setId("credits-menu-pane");
         creditsMenuPane.setVisible(false);
@@ -194,7 +184,6 @@ public class MusicalInvaders extends Application {
     }
 
     public void changeGameState(GameState newState) {
-        // Verhindere unnötige Zustandswechsel, außer wenn wir das Hauptmenü "neu laden" wollen
         if (this.currentGameState == newState && newState != GameState.MAIN_MENU) {
             return;
         }
@@ -202,45 +191,51 @@ public class MusicalInvaders extends Application {
         GameState previousState = this.currentGameState;
         this.currentGameState = newState;
 
-        // Overlays standardmäßig ausblenden
         pauseMenuPane.setVisible(false);
         gameOverMenuPane.setVisible(false);
         creditsMenuPane.setVisible(false);
 
-        // GameLoop stoppen, wenn nicht mehr gespielt wird
         if (gameLoop != null && newState != GameState.PLAYING) {
             gameLoop.stop();
             System.out.println("GameLoop stopped.");
         }
-        // Intro-Sound stoppen, wenn Menü verlassen wird
         if (currentPlayingIntro != null && currentPlayingIntro.isPlaying() && newState != GameState.MAIN_MENU) {
             currentPlayingIntro.stop();
         }
 
+        // Stoppe Jubel-Loop, wenn Credits verlassen werden (egal wohin)
+        // oder wenn ein neues Spiel gestartet wird (um sicherzugehen)
+        if (globalSoundManager != null && previousState == GameState.CREDITS) {
+            if (newState == GameState.MAIN_MENU || newState == GameState.PLAYING) {
+                globalSoundManager.stopJubelLoop();
+            }
+        }
+        // Auch stoppen, wenn vom Hauptmenü ins Spiel gewechselt wird (falls es lief und nicht gestoppt wurde)
+        if (globalSoundManager != null && newState == GameState.PLAYING && previousState == GameState.MAIN_MENU){
+            globalSoundManager.stopJubelLoop(); // Sicherstellen, dass es aus ist
+        }
+
+
         switch (newState) {
             case MAIN_MENU:
-                selectedVoiceProfile = null; // Stimme für nächstes Spiel zurücksetzen
-                if (voiceProfiles != null && !voiceProfiles.isEmpty()) { // Sicherstellen, dass voiceProfiles initialisiert ist
+                selectedVoiceProfile = null;
+                if (voiceProfiles != null && !voiceProfiles.isEmpty()) {
                     currentlyPreviewedVoice = voiceProfiles.get(0);
                 }
-                mainMenuScene = createMainMenuScene(); // Erstellt oder aktualisiert die Menü-Szene
+                mainMenuScene = createMainMenuScene();
                 primaryStage.setScene(mainMenuScene);
                 break;
 
             case PLAYING:
                 if (selectedVoiceProfile == null) {
                     System.err.println("Keine Stimme ausgewählt. Zurück zum Hauptmenü.");
-                    changeGameState(GameState.MAIN_MENU); // Erzwinge Rückkehr zum Menü
-
+                    changeGameState(GameState.MAIN_MENU);
                     return;
                 }
-                // Wenn wir aus der Pause kommen oder das Spiel zum ersten Mal starten (nach Menüauswahl)
                 if (previousState == GameState.PAUSED) {
-                    // Spielszene existiert bereits, Loop wieder starten
-                    if (primaryStage.getScene() != gameScene) primaryStage.setScene(gameScene); // Nur wenn Szene gewechselt wurde
+                    if (primaryStage.getScene() != gameScene) primaryStage.setScene(gameScene);
                 } else {
-                    // Neues Spiel oder erstes Spiel nach Menü
-                    initializeGame(); // Bereitet Spielvariablen und Szene vor
+                    initializeGame();
                     primaryStage.setScene(gameScene);
                 }
                 if (gameLoop != null) {
@@ -250,7 +245,7 @@ public class MusicalInvaders extends Application {
                 break;
 
             case PAUSED:
-                if (gameRootPane != null) { // Nur wenn Spielszene existiert
+                if (gameRootPane != null) {
                     if (!gameRootPane.getChildren().contains(pauseMenuPane)) {
                         gameRootPane.getChildren().add(pauseMenuPane);
                     }
@@ -270,16 +265,10 @@ public class MusicalInvaders extends Application {
                 break;
 
             case CREDITS:
-                // Stoppe den GameLoop explizit, falls er noch lief (z.B. wenn Credits direkt nach dem Spiel kommen)
                 if (gameLoop != null) {
                     gameLoop.stop();
-                    System.out.println("GameLoop stopped for Credits.");
                 }
-
-                // Bevorzugte Methode: Credits als Overlay über der aktuellen Szene (Spiel oder Menü)
-                // Wir brauchen den Root-Node der aktuellen Szene, um das Overlay hinzuzufügen.
                 Node currentSceneRootNode = primaryStage.getScene() != null ? primaryStage.getScene().getRoot() : null;
-
                 if (mainMenuScene != null && mainMenuScene.getRoot() instanceof StackPane) {
                     StackPane menuRoot = (StackPane) mainMenuScene.getRoot();
                     if (!menuRoot.getChildren().contains(creditsMenuPane)) {
@@ -287,52 +276,48 @@ public class MusicalInvaders extends Application {
                     }
                     creditsMenuPane.setVisible(true);
                     creditsMenuPane.toFront();
-                    primaryStage.setScene(mainMenuScene); // Bleibe auf der Hauptmenü-Szene
-                    System.out.println("Credits als Overlay zum Hauptmenü hinzugefügt.");
+                    primaryStage.setScene(mainMenuScene);
                 } else {
-                    // Fallback: Wenn die aktuelle Szene keinen StackPane als Root hat
-                    // oder keine Szene gesetzt ist (unwahrscheinlich), erstelle eine neue Szene nur für Credits.
-                    // Dies sollte idealerweise vermieden werden, um den Kontext nicht zu verlieren.
-                    System.out.println("Fallback: Erstelle neue Szene für Credits."); // Debug
                     double w = (gameDimensions != null) ? gameDimensions.getWidth() : 900;
                     double h = (gameDimensions != null) ? gameDimensions.getHeight() : 650;
-                    Scene creditsOnlyScene = new Scene(creditsMenuPane, w, h); // creditsMenuPane ist hier der Root
+                    Scene creditsOnlyScene = new Scene(creditsMenuPane, w, h);
                     try {
-                        // HIER müsste das CSS explizit für die neue Szene geladen werden
                         String cssPath = Objects.requireNonNull(getClass().getResource(MAIN_MENU_CSS_PATH)).toExternalForm();
-                        creditsOnlyScene.getStylesheets().add(cssPath); // <<--- WICHTIG
-                        System.out.println("CSS für separate Credits-Szene geladen: " + cssPath);
+                        creditsOnlyScene.getStylesheets().add(cssPath);
                     } catch (Exception e) {
                         System.err.println("CSS für Credits-Szene nicht gefunden (" + MAIN_MENU_CSS_PATH + "): " + e.getMessage());
                     }
-                    creditsMenuPane.setVisible(true); // Stelle sicher, dass das Root-Pane der Szene sichtbar ist
+                    creditsMenuPane.setVisible(true);
                     primaryStage.setScene(creditsOnlyScene);
                 }
-                startCreditRoll(); // Starte die Animation
+                startCreditRoll();
+                if (globalSoundManager != null) {
+                    globalSoundManager.startJubelLoop();
+                }
                 break;
 
             case LEVEL_TRANSITION:
-                // Hier Logik für Wellenübergang einfügen
                 System.out.println("Level Transition (Placeholder)");
-                // Nach kurzer Pause: changeGameState(GameState.PLAYING);
                 break;
         }
     }
 
     private void startCreditRoll() {
         creditsContentBox.getChildren().clear();
-        addCreditEntry("", "");
+        addCreditEntry("Herzlichen Glückwunsch!", "");
+        addCreditEntry("Du hast Musical Invaders besiegt!", "");
+        addCreditEntry("== Stimmen von ==", "");
         for(VoiceProfile voiceProfile : voiceProfiles) {
             addCreditEntry("- " + voiceProfile.getDisplayName(), "");
         }
         addCreditEntry("", "");
+        addCreditEntry("== Entwicklung ==", "");
+        addCreditEntry("My, Myself and I", ""); // Platzhalter für deinen Namen
+        addCreditEntry("", "");
+        addCreditEntry("Danke fürs Spielen!", "");
+
 
         creditsScrollPane.setVvalue(0.0);
-
-        double contentHeight = voiceProfiles.size() * 30+20*30;
-        double scrollPaneHeight = creditsContentBox.getHeight(); //könnte ein problem sein, falls fehler => gameDimensions.getHeight()
-
-        scrollPaneHeight = gameDimensions.getHeight()*0.8;
 
         if(creditRollTimeline != null){
             creditRollTimeline.stop();
@@ -341,18 +326,24 @@ public class MusicalInvaders extends Application {
         pt.setOnFinished(event -> {
             double actualHeight = creditsContentBox.getBoundsInLocal().getHeight();
             double visibleHeight = creditsScrollPane.getViewportBounds().getHeight();
-            if(visibleHeight <= 0) visibleHeight = gameDimensions.getHeight()*0.8;
+            if(visibleHeight <= 0 && gameDimensions != null) visibleHeight = gameDimensions.getHeight()*0.8;
+            else if (visibleHeight <= 0) visibleHeight = 650 * 0.8;
 
             creditsContentBox.setTranslateY(visibleHeight);
 
             creditRollTimeline = new Timeline();
-            double scrollSpeed = 0.05;
-            double durrationMillis = (actualHeight + visibleHeight)/scrollSpeed;
+            double scrollSpeedFactor = 0.03;
+            if (actualHeight <=0 ) actualHeight = 500;
+            double durationMillis = (actualHeight + visibleHeight) / scrollSpeedFactor;
+
 
             KeyValue kv = new KeyValue(creditsContentBox.translateYProperty(), -actualHeight);
-            KeyFrame kf = new KeyFrame(Duration.millis(durrationMillis), kv);
+            KeyFrame kf = new KeyFrame(Duration.millis(durationMillis), kv);
             creditRollTimeline.getKeyFrames().add(kf);
             creditRollTimeline.setOnFinished(e ->{
+                if (globalSoundManager != null) {
+                    globalSoundManager.stopJubelLoop();
+                }
                 changeGameState(GameState.MAIN_MENU);
             });
             creditRollTimeline.play();
@@ -371,15 +362,11 @@ public class MusicalInvaders extends Application {
             namesLabel.setWrapText(true);
             creditsContentBox.getChildren().add(namesLabel);
             VBox.setMargin(namesLabel, new Insets(0, 0,15,0));
+        } else {
+            VBox.setMargin(titleLabel, new Insets(0, 0,5,0));
         }
     }
-
     private Scene createMainMenuScene() {
-        // Dein bestehender Code für createMainMenuScene(), stelle sicher, dass IDs und StyleClasses gesetzt sind
-        // und der Confirm-Button changeGameState(GameState.PLAYING) aufruft.
-        // Der Credits-Button ruft changeGameState(GameState.CREDITS) auf.
-        // (Code von dir hier einfügen, angepasst für Klarheit)
-
         BorderPane rootLayout = new BorderPane();
         rootLayout.setId("main-menu-layout");
 
@@ -407,9 +394,10 @@ public class MusicalInvaders extends Application {
             sceneRoot.getStylesheets().add(cssPath);
         } catch (Exception e) { System.err.println("CSS-Datei für Hauptmenü nicht gefunden: " + e.getMessage()); }
 
-        Label titleLabel = new Label("Welcome");
+        Label titleLabel = new Label("Musical Invaders");
         titleLabel.setId("title-label");
         BorderPane.setAlignment(titleLabel, Pos.CENTER);
+        BorderPane.setMargin(titleLabel, new Insets(20,0,0,0));
         rootLayout.setTop(titleLabel);
 
         VBox voiceSelectionBox = new VBox();
@@ -420,14 +408,14 @@ public class MusicalInvaders extends Application {
         voiceSelectionBox.getChildren().add(chooseVoiceLabel);
         ListView<VoiceProfile> voiceListView = new ListView<>(voiceProfiles);
         voiceListView.setId("voice-list-view");
-        voiceListView.setCellFactory(param -> new ListCell<VoiceProfile>() { /* ... Deine CellFactory ... */
+        voiceListView.setCellFactory(param -> new ListCell<VoiceProfile>() {
             private final HBox cellContent = new HBox();
             private final Label nameLabel = new Label();
             private final Button playButton = new Button("▶");
             private final Region spacer = new Region();
             private static final javafx.css.PseudoClass FIRST_CELL_PSEUDO_CLASS = javafx.css.PseudoClass.getPseudoClass("first-cell");
             private static final javafx.css.PseudoClass LAST_CELL_PSEUDO_CLASS = javafx.css.PseudoClass.getPseudoClass("last-cell");
-            { /* ... Initialisierung der Zellenelemente ... */
+            {
                 cellContent.getStyleClass().add("voice-list-cell-content");
                 nameLabel.getStyleClass().add("voice-name-label");
                 playButton.getStyleClass().add("play-intro-button");
@@ -463,7 +451,7 @@ public class MusicalInvaders extends Application {
 
         VBox infoArea = new VBox();
         infoArea.setId("info-area");
-        Label infoTitleLabel = new Label("Everyone has a story to tell");
+        Label infoTitleLabel = new Label("Beschreibung");
         infoTitleLabel.getStyleClass().add("section-title");
         TextArea infoTextArea = new TextArea();
         infoTextArea.setEditable(false); infoTextArea.setWrapText(true); infoTextArea.setId("info-text-area");
@@ -492,83 +480,79 @@ public class MusicalInvaders extends Application {
         return new Scene(sceneRoot, 900, 650);
     }
 
-    // Umbenannt und zentralisiert für die Spielinitialisierung
+
     private void initializeGame() {
-        // Bildschirmauflösung (kann global sein, wenn Menü und Spiel dieselbe Auflösung haben)
         Screen screen = Screen.getPrimary();
         Rectangle2D bounds = screen.getVisualBounds();
         double windowHeight = bounds.getHeight();
-        double windowWidth = windowHeight * (4.0 / 3.0); // Behalte dein Seitenverhältnis
+        double windowWidth = windowHeight * (4.0 / 3.0);
         if (windowWidth > bounds.getWidth()) { windowWidth = bounds.getWidth(); windowHeight = windowWidth * (3.0 / 4.0); }
+
         this.gameDimensions = new GameDimensions(windowWidth, windowHeight);
 
-        // Spiel-Panes erstellen/zurücksetzen
+        if (selectedVoiceProfile != null && selectedVoiceProfile.getSfxFolderPath() != null) {
+            this.profileSoundManager = new SoundManager(selectedVoiceProfile.getSfxFolderPath());
+        } else {
+            System.err.println("MusicalInvaders: selectedVoiceProfile or its SFX path is null for profileSoundManager.");
+            this.profileSoundManager = new SoundManager((String) null);
+        }
+
         gamePane = new Pane();
         gamePane.setPrefSize(gameDimensions.getWidth(), gameDimensions.getHeight());
-        gamePane.setId("game-pane"); // ID für potenzielles CSS
-        gamePane.setStyle("-fx-background-color: #1a1a1a;"); // Dein Spielhintergrund
+        gamePane.setId("game-pane");
+        gamePane.setStyle("-fx-background-color: #1a1a1a;");
 
         uiPane = new Pane();
         uiPane.setId("ui-pane");
         uiPane.setPrefSize(gameDimensions.getWidth(), gameDimensions.getHeight());
         uiPane.setMouseTransparent(true);
 
-        // Root-Pane für die Spielszene (wichtig für Overlays)
         gameRootPane = new StackPane(gamePane, uiPane);
-        // In MusicalInvaders.initializeGame(), nachdem gamePane dem gameRootPane hinzugefügt wurde:
-        System.out.println("GamePane in Scene - LayoutX: " + gamePane.getLayoutX() + ", LayoutY: " + gamePane.getLayoutY());
-        System.out.println("GamePane in Scene - TranslateX: " + gamePane.getTranslateX() + ", TranslateY: " + gamePane.getTranslateY());
-        System.out.println("GamePane Bounds in Parent (gameRootPane): " + gamePane.getBoundsInParent());
-        // Füge Overlay-Panes hinzu (werden durch changeGameState sichtbar/unsichtbar)
         if (!gameRootPane.getChildren().contains(pauseMenuPane)) gameRootPane.getChildren().add(pauseMenuPane);
         if (!gameRootPane.getChildren().contains(gameOverMenuPane)) gameRootPane.getChildren().add(gameOverMenuPane);
-        pauseMenuPane.setVisible(false); // Stelle sicher, dass sie anfangs unsichtbar sind
+        pauseMenuPane.setVisible(false);
         gameOverMenuPane.setVisible(false);
 
-        gameScene = new Scene(gameRootPane, gameDimensions.getWidth(), gameDimensions.getHeight());
 
-        // InputHandler an die NEUE Spielszene binden
+        gameScene = new Scene(gameRootPane, gameDimensions.getWidth(), gameDimensions.getHeight());
         inputHandler = new InputHandler(gameScene);
 
-        // Spiel-Manager instanziieren oder zurücksetzen
-        // WICHTIG: Passe die Konstruktoren deiner Manager-Klassen an, um 'this' (MusicalInvaders-Instanz) zu akzeptieren!
         gameUIManager = new UIManager(uiPane, gameDimensions, this);
-        entityManager = new GameEntityManager(gamePane, gameDimensions, gameUIManager /*, this // Falls benötigt */);
-        gameUpdater = new GameUpdater(entityManager, inputHandler, gameDimensions, gameUIManager, this);
+        entityManager = new GameEntityManager(gamePane, gameDimensions, gameUIManager, this.profileSoundManager);
+        gameUpdater = new GameUpdater(entityManager, inputHandler, gameDimensions, gameUIManager, this, this.profileSoundManager);
 
-        // Spiel initialisieren (Gegner, Spieler, Score etc.)
-        gameUIManager.resetScore(); // Wichtig: Score bei Neustart zurücksetzen
-        entityManager.resetGame(); // NEUE METHODE im EntityManager zum Zurücksetzen von Wellen, Boss etc.
+        gameUIManager.resetScore();
         entityManager.createPlayer();
         gameUIManager.createScoreLabel();
-        entityManager.spawnEnemyWaveInitial(); // Startet Welle 1
-         // Stellt sicher, dass das Score-Label da ist
+        entityManager.spawnEnemyWaveInitial();
 
-        // Game Loop erstellen, falls nicht vorhanden (wird in changeGameState gestartet)
         if (gameLoop == null) {
             gameLoop = new AnimationTimer() {
                 private long lastUpdate = 0;
+                private boolean firstFrameAfterResume = true;
                 @Override
                 public void handle(long now) {
                     if (currentGameState != GameState.PLAYING) {
-                        lastUpdate = 0; return;
+                        firstFrameAfterResume = true;
+                        return;
                     }
-                    if (lastUpdate == 0) { lastUpdate = now; return; }
-                    lastUpdate = now; // Für deltaTime Berechnung
-                    // double deltaTime = (now - lastUpdateNanos) / 1_000_000_000.0; // Korrekte deltaTime
-                    // lastUpdateNanos = now;
-                    gameUpdater.update(now, 0.016); // Feste deltaTime für jetzt
+                    if (firstFrameAfterResume || lastUpdate == 0) {
+                        lastUpdate = now;
+                        firstFrameAfterResume = false;
+                        return;
+                    }
+                    double deltaTime = (now - lastUpdate) / 1_000_000_000.0;
+                    lastUpdate = now;
+                    if (deltaTime > 0.1) { deltaTime = 0.1; }
+                    if (deltaTime <= 0) { deltaTime = 1.0/60.0; }
+                    gameUpdater.update(now, deltaTime);
                 }
             };
         }
-        // In MusicalInvaders.initializeGame(), nachdem gamePane erstellt wurde:
-        System.out.println("GamePane Bounds in Parent: " + gamePane.getBoundsInParent());
-        System.out.println("GamePane Layout Bounds: " + gamePane.getLayoutBounds());
-        System.out.println("GamePane Breite/Höhe: " + gamePane.getWidth() + "/" + gamePane.getHeight()); // Ist oft 0 bis zum ersten Layout-Pass
-        System.out.println("GamePane Pref Breite/Höhe: " + gamePane.getPrefWidth() + "/" + gamePane.getPrefHeight());
+        System.out.println("Spiel initialisiert/neu gestartet.");
     }
 
-    // Wird vom GameUpdater aufgerufen
+
     public void triggerGameOver() {
         changeGameState(GameState.GAME_OVER);
     }
@@ -582,7 +566,6 @@ public class MusicalInvaders extends Application {
     }
 
     private void playIntro(VoiceProfile profile) {
-        // Deine playIntro-Logik...
         if (profile == null || profile.getIntroAudioClip() == null) { System.err.println("Kein Intro-Clip für: " + (profile != null ? profile.getDisplayName() : "Unbekannt")); return; }
         if (currentPlayingIntro != null && currentPlayingIntro.isPlaying()) { currentPlayingIntro.stop(); }
         currentPlayingIntro = profile.getIntroAudioClip();

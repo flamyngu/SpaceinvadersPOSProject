@@ -25,6 +25,6 @@ public class Enemy {
     }
 
     public void setHealth(int newHealth) {
-        this.health = Math.max(0, newHealth); // Ensure health doesn't go below 0
+        this.health = Math.max(0, newHealth);
     }
 }

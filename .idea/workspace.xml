@@ -9,14 +9,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey">
-      <change afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/artifacts/Spaceinvaders_jar.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/material_theme_project_new.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/resources/META-INF/MANIFEST.MF" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/BossController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/BossController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Enemy.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Enemy.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Player.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Player.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/j.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/SoundManager.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -67,31 +69,31 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Application.MusicalInvaders.executor": "Run",
-    "Application.Musicalinvaders.executor": "Run",
-    "Maven.Spaceinvaders [clean].executor": "Run",
-    "Maven.Spaceinvaders [package].executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "master",
-    "kotlin-language-version-configured": "true",
-    "list.type.of.created.stylesheet": "CSS",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "Project",
-    "project.structure.proportion": "0.15",
-    "project.structure.side.proportion": "0.2",
-    "settings.editor.selected.configurable": "preferences.keymap",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Application.MusicalInvaders.executor&quot;: &quot;Run&quot;,
+    &quot;Application.Musicalinvaders.executor&quot;: &quot;Run&quot;,
+    &quot;Maven.Spaceinvaders [clean].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.Spaceinvaders [package].executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;list.type.of.created.stylesheet&quot;: &quot;CSS&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\dodo\Documents\GitHub\SpaceinvadersPOSProject\src\main\resources\fonts" />
@@ -175,7 +177,8 @@
       <workItem from="1747498770584" duration="725000" />
       <workItem from="1747916562758" duration="11833000" />
       <workItem from="1748107542502" duration="379000" />
-      <workItem from="1748622411747" duration="11994000" />
+      <workItem from="1748622411747" duration="12696000" />
+      <workItem from="1749392594273" duration="10285000" />
     </task>
     <task id="LOCAL-00001" summary="First Logic + Score">
       <option name="closed" value="true" />
@@ -257,7 +260,15 @@
       <option name="project" value="LOCAL" />
       <updated>1748630098706</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025">
+      <option name="closed" value="true" />
+      <created>1748636607958</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1748636607958</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -274,6 +285,7 @@
     <MESSAGE value="22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing) &#10;acc: sta230286@spg.." />
     <MESSAGE value="22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing (error with getGamePane())) &#10;acc: sta230286@spg.." />
     <MESSAGE value="30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey" />
-    <option name="LAST_COMMIT_MESSAGE" value="30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey" />
+    <MESSAGE value="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025" />
+    <option name="LAST_COMMIT_MESSAGE" value="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025" />
   </component>
 </project>

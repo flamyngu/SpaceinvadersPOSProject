@@ -13,9 +13,13 @@ public class Player {
         this.node = new Rectangle(gameDimensions.getPlayerWidth(), gameDimensions.getPlayerHeight());
         this.node.setFill(Color.CYAN);
 
-        // Startposition - verwende setLayoutX/setLayoutY für Konsistenz
-        this.node.setLayoutX(gameDimensions.getWidth() / 2 - gameDimensions.getPlayerWidth() / 2);
-        this.node.setLayoutY(gameDimensions.getHeight() - gameDimensions.getPlayerHeight() - 20);
+        double startX = gameDimensions.getWidth() / 2 - gameDimensions.getPlayerWidth() / 2;
+        double startY = gameDimensions.getHeight() - gameDimensions.getPlayerHeight() - 20;
+        this.node.setLayoutX(startX);
+        this.node.setLayoutY(startY);
+        // System.out.println("Player.java: Spieler erstellt an Position X=" + startX + ", Y=" + startY); // Log von vorheriger Anfrage
+        // System.out.println("Player.java: Spieler Node Bounds in Local: " + this.node.getBoundsInLocal());
+        // System.out.println("Player.java: Spieler Node Bounds in Parent (beim Erstellen, Parent ist noch null): " + this.node.getBoundsInParent());
     }
 
     public Node getNode() {
@@ -23,15 +27,14 @@ public class Player {
     }
 
     public void move(double dx) {
-        double newX = node.getLayoutX() + dx; // Verwende getLayoutX() statt getX()
-        // Grenzenprüfung
+        double newX = node.getLayoutX() + dx;
         if (newX >= 0 && newX <= gameDimensions.getWidth() - node.getWidth()) {
-            node.setLayoutX(newX); // Verwende setLayoutX() statt setX()
+            node.setLayoutX(newX);
         }
     }
 
-    // Getter - verwende getLayoutX/getLayoutY für Konsistenz
     public double getX() { return node.getLayoutX(); }
     public double getY() { return node.getLayoutY(); }
-    public double getWidth() { return node.getWidth(); }
+    public double getWidth() { return node.getBoundsInLocal().getWidth(); }
+    public double getHeight() { return node.getBoundsInLocal().getHeight();}
 }
