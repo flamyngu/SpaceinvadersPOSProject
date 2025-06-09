@@ -9,16 +9,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025">
+    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="finally added The sounds&#10;&#10;8 Juli 2025">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/BossController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/BossController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Enemy.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Enemy.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameEntityManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameUpdater.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Player.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/Player.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/j.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/SoundManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/mainmenu.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/mainmenu.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Leo Fukahori/Jubel.wav" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/sfx/Leo Fukahori/Jubel.wav" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Leo Fukahori/Jubel2.wav" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -178,7 +174,8 @@
       <workItem from="1747916562758" duration="11833000" />
       <workItem from="1748107542502" duration="379000" />
       <workItem from="1748622411747" duration="12696000" />
-      <workItem from="1749392594273" duration="10285000" />
+      <workItem from="1749392594273" duration="10839000" />
+      <workItem from="1749496397787" duration="7956000" />
     </task>
     <task id="LOCAL-00001" summary="First Logic + Score">
       <option name="closed" value="true" />
@@ -268,7 +265,15 @@
       <option name="project" value="LOCAL" />
       <updated>1748636607958</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="finally added The sounds&#10;&#10;8 Juli 2025">
+      <option name="closed" value="true" />
+      <created>1749417233697</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1749417233697</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -286,6 +291,7 @@
     <MESSAGE value="22. mai 2025&#10;&#10;new wave logic, &#10;BossController.java implemented (still needs fixing (error with getGamePane())) &#10;acc: sta230286@spg.." />
     <MESSAGE value="30. mai 2025&#10;&#10;OMGGGGG finished the wave logic&#10;now only need to add SFX and Graphics&#10;&#10;Yipppppiey" />
     <MESSAGE value="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025" />
-    <option name="LAST_COMMIT_MESSAGE" value="made it into a portable .bat file at            .../Documents/MusicalInvaders-Portable&#10;&#10;30. mai 2025" />
+    <MESSAGE value="finally added The sounds&#10;&#10;8 Juli 2025" />
+    <option name="LAST_COMMIT_MESSAGE" value="finally added The sounds&#10;&#10;8 Juli 2025" />
   </component>
 </project>

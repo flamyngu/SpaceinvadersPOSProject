@@ -97,24 +97,47 @@ public class MusicalInvaders extends Application {
     private void loadVoiceProfiles() {
         voiceProfiles = FXCollections.observableArrayList(
                 new VoiceProfile("Der Franzose", "/sfx/Der Franzose/Vorstellung.wav", "/sfx/Der Franzose/", "Ein Baguette, frisch aus dem Ofen heiß,\n" +
+                        "\n" +
                         "geformt von Bäckerhand mit Fleiß.\n" +
+                        "\n" +
                         "Im Laden lag es, goldbraun, ein wahrer Augenschmaus,\n" +
+                        "\n" +
                         "ich trug es stolz dann schnell nach Haus.\n" +
+                        "\n" +
+                        "\n" +
+                        "\n" +
                         "Die Kruste knackt, so knusprig fein,\n" +
+                        "\n" +
                         "das Inn're weich, ein lichter Schein.\n" +
+                        "\n" +
                         "Mit Butter, Käse oder pur – ein Genuss,\n" +
+                        "\n" +
                         "so endet es mit einem Kuss."),
-                new VoiceProfile("Prof. Slawitscheck", "/sfx/Prof. Slawitscheck/Introduction.wav", "/sfx/Prof. Slawitscheck/", "Erika singt gerne."),
-                new VoiceProfile("Prof. Csaszar", "/sfx/Prof. Csaszar/Introduction.wav", "/sfx/Prof. Csaszar/", "Teststimme Alpha."),
-                new VoiceProfile("Mary Fly", "/sfx/Mary Fly/Introduction.wav", "/sfx/Mary Fly/", "Teststimme Beta."),
-                new VoiceProfile("Omar Rosbal", "/sfx/Omar Rosypal/Introduction.wav", "/sfx/Omar Rosypal/", "Max isst gerne Pizza."), // Korrigierter Pfad
-                new VoiceProfile("Mhh lecka Bierchen", "/sfx/Simon Leber/Introduction.wav", "/sfx/Simon Leber/", "Erika singt gerne."),
-                new VoiceProfile("Der Japaner", "/sfx/Leo Fukahori/Introduction.wav", "/sfx/Leo Fukahori/", "Teststimme Alpha."),
-                new VoiceProfile("Fabian Meduna", "/sfx/Fabio Meduna/Introduction.wav", "/sfx/Fabio Meduna/", "Teststimme Beta."),
-                new VoiceProfile("Stimme von Max", "/sfx/MaxMustermann/intro_MaxMustermann.wav", "/sfx/MaxMustermann/", "Max isst gerne Pizza."),
-                new VoiceProfile("Stimme von Erika", "/sfx/ErikaMusterfrau/intro_ErikaMusterfrau.wav", "/sfx/ErikaMusterfrau/", "Erika singt gerne."),
-                new VoiceProfile("Stimme Alpha", "/sfx/StimmeAlpha/intro_StimmeAlpha.wav", "/sfx/StimmeAlpha/", "Teststimme Alpha."),
-                new VoiceProfile("Stimme Beta", "/sfx/StimmeBeta/intro_StimmeBeta.wav", "/sfx/StimmeBeta/", "Teststimme Beta.")
+                new VoiceProfile("Prof. Slawitscheck", "/sfx/Prof. Slawitscheck/Introduction.wav", "/sfx/Prof. Slawitscheck/", "Slawitscheck, ein Lehrer feinster Art,\n" +
+                        "Mathe für ihn ist wie Musik für Mozart,\n" +
+                        "\n" +
+                        "SOPK mit ihm ist wie eine Sitzung im Senat, \n" +
+                        "\n" +
+                        "Bei ihm sammelt man Wissen wie Benzin bei eine Tankautomat. \n" +
+                        "\n" +
+                        "\n" +
+                        "\n" +
+                        "In seiner Freizeit tüftelt er mit Herz und Sinn,\n" +
+                        "\n" +
+                        "Mit seinen Spielen macht er ordentlich Gewinn.\n" +
+                        "\n" +
+                        "Die Spielstunden sind seiner Schüler ein Stein in der Brandung,\n" +
+                        "\n" +
+                        "Unsere Schularbeiten sind ihm wichtig wie eine Dokumentensammlung."
+                        ),
+                new VoiceProfile("Prof. Csaszar", "/sfx/Prof. Csaszar/Introduction.wav", "/sfx/Prof. Csaszar/", "So nehme man einen Dwayn 'the Rock'\n\nJohnson und wartet 10 Jahre so\n\nerscheint ein Professor Robert Csaszar.\n\nSein Physikunterricht ist wie eine Oase\n\ndes Wissens, es gibt keine Dummen\n\nFragen und keine dürftigen Antworten.\n\nAn Spaß mangelte es auch nicht, du\n\nmöchtest mit einem Auto in eine Wand\n\nfahren und es 'Experiment' nennen? Dann\n\nist er dein Mann! Was muss ein Lehrer\n\nhaben damit er als 'cool' durchgeht?\n\nEin Motorrad? Eine glänzende Glatze?\n\nEinen eleganter Bart? Er hat sie alle.\n\nUnd wie kann man bloß auf seine\n\nCatchphrase vergessen? ein 'Abgelehnt'\n\ngesprochen mit der Stimme eines Engels."),
+                new VoiceProfile("Mary Fly", "/sfx/Mary Fly/Introduction.wav", "/sfx/Mary Fly/", "Mary Fly, offiziell Marie Kissler\n\ngenannt, hat eine mysteriöse\n\nObsession mit Mailand,\n\nich weiß auch nicht wieso, naja.\n\nHugo ist ihr Erzfeind,\n\nnur ein Schluck und sie fällt Tot um\n\n(stimmt wirklich, hab ich schon mal miterlebt).\n\nDoch solltest du so unvorsichtig\n\nsein und das Wort 'Vodkabull' in ihrer\n\nNähe erwähnen, so kannst du dir\n\nsicher sein, dass sie bereits den Weg\n\nzu dir eingeschlagen hat und du bald\n\nihrer funkelnden Augen siehst\n\n(naja, angenommen du schaust nicht über sie drüber).\n\nSie wohnt bei 47°57'40.6\"N 16°24'...\n\nNein, Spaß Marie ich doxs dich nicht, keine Angst."),
+                new VoiceProfile("Omar Rosbal", "/sfx/Omar Rosypal/Introduction.wav", "/sfx/Omar Rosypal/", "Omar Rosbal? Wieso Omar Rosbal?\n\nEigentlicht heißt er Omar Rosypal,\n\ndoch niemand weiß wie man seinen Namen ausspricht,\n\ndeswegen kassiert er jede Stunde einen neuen Spitznamen vom Lehrer.\n\nLeider haben wir den echten Omar Rosypal schon vor langer Zeit verloren.\n\nSein Mörder?\n\nEin Spieleentwickler Studio namens 'Riot Games'.\n\n'Wie ist das nur möglich?' hör ich dich fragen.\n\nDie Antwort ist simpel: LEAGUE OF LEGENDS und Valorant,\n\ndas eine hat ihn vergifted das ander ihm ein Messer in den Rücken gestoßen.\n\nNun eine Schweigeminute für unseren gefallenen Bruder."), // Korrigierter Pfad
+                new VoiceProfile("Mhh lecka Bierchen", "/sfx/Simon Leber/Introduction.wav", "/sfx/Simon Leber/", "'Mhh lecka Bierchen' wurde von Simon Leber gevoiced.\n\nBierchen sind seine Leibspeise, ich mein im Endeffekt ist Bier eh nur flüssiges Brot, also...\n\nFalls du dich jemals in einer\n\nkniffligen Lage befindest, in welcher\n\nein Muskelpaket, welches Hulk den Platz weißt, deine einzige Rettung ist,\n\ndann sollte Simon Leber deine erste Wahl sein.\n\nDoch er ist nicht nur eine absolute Maschine,\n\nseine Stimme ist wie das Knistern eines heißen Feuers in einem Stein Kamin an einem kalten Wintertag,\n\nwie die Glocke nach der 10ten Stunde am Mittwoch,\n\nwie dieser eine Gehfehler,\n\nwie der Sternenhimmel an einer mondlosen Nacht."),
+                new VoiceProfile("Momoko X Selin", "/sfx/Momoko X Selin/Vorstellung.wav", "/sfx/Momoko X Selin/", "Max isst gerne Pizza."),
+                new VoiceProfile("Der Japaner", "/sfx/Leo Fukahori/Introduction.wav", "/sfx/Leo Fukahori/", "'Der Japaner', gevoiced von Leo Fukahori,\n\nist eine energetische und unterstützende Wahl.\n\n'Fukahori' ist der Lieblingsname vom Herrn Dr. Karl Wodnar,\n\nbei jeder seiner Amtshandlungen durchtrennt er beim vorlesen des Namens die Luft mit seiner Hand,\n\nwie Butter mit einem heißen Messer.\n\nDoch verstehst du alles was unser Reis verschlingende Freund zu sagen hat?\n\nUm es präziser zu formulieren, wie hoch ist deine Doulingo-Streak?\n\nIch habe gehört er hat mal 2 Platten Sushi mit nur einem Stift zubereitet,\n\nist diese Geschichte wirklich so passiert oder haben wir sie frei erfunden?\n\nHier noch ein lustiges Yojijukugo (Japanese: 四字熟語): 今朝毎朝 (Kesamaiasa),\n\nder Witz liegt im Bilingualismus der Aussprache der vier Kanji :))."),
+                new VoiceProfile("Fabian Meduna", "/sfx/Fabio Meduna/Introduction.wav", "/sfx/Fabio Meduna/", "Fabio Meduna, was soll ich sagen?\n\nEine besondere Figur, man könnte fast schon Komiker sagen.\n\nEigentlich würde ich ihn hier jetzt haten (eng), jedoch finde ich,\n\ndass man auch ab und zu etwas positives über dem Herrn Meduna sagen kann.\n\nZum Beispiel weiß ich, dass der Kollege,\n\nwenn ihn ein Thema interessiert,\n\näußerst lernfreudig sein kann und voller Neugier und Enthusiasmus über ein Thema reden kann.\n\nAuch weiß ich, dass er eine interessanten Kink für Straßenschilder hat,\n\ndoch wieso, weiß ich nicht,\n\nähnlich wie bei Mary Fly's Obsession mit Mailand.\n\nNaja, jedem das Seine ig."),
+                new VoiceProfile("Lebron James", "/sfx/Lebron James/Introduction.wav", "/sfx/Lebron James/", "Die Stimme von Lebron James interpretiert vom professionellen Basketballspieler Polat Sahin Keles. .")
         );
         if (!voiceProfiles.isEmpty()) {
             currentlyPreviewedVoice = voiceProfiles.get(0);

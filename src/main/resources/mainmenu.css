@@ -135,7 +135,7 @@
 }
 #info-text-area {
     -fx-font-family: 'Press Start 2P', 'PixelFont', monospace;
-    -fx-font-size: 13px;
+    -fx-font-size: 11px;
     -fx-text-fill: white;
     -fx-control-inner-background: transparent !important;
     -fx-background-color: transparent !important;
