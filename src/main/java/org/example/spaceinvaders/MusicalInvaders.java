@@ -116,9 +116,9 @@ public class MusicalInvaders extends Application {
                 new VoiceProfile("Prof. Slawitscheck", "/sfx/Prof. Slawitscheck/Introduction.wav", "/sfx/Prof. Slawitscheck/", "Slawitscheck, ein Lehrer feinster Art,\n" +
                         "Mathe für ihn ist wie Musik für Mozart,\n" +
                         "\n" +
-                        "SOPK mit ihm ist wie eine Sitzung im Senat, \n" +
+                        "SOPK mit ihm, ist wie eine Sitzung im Senat, \n" +
                         "\n" +
-                        "Bei ihm sammelt man Wissen wie Benzin bei eine Tankautomat. \n" +
+                        "Bei ihm sammelt man Wissen wie Benzin bei einem Tankautomat. \n" +
                         "\n" +
                         "\n" +
                         "\n" +
