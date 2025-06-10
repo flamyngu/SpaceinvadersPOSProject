@@ -1,17 +1,20 @@
 @font-face {
-    font-family: 'PixelFont';
-    src: url('./fonts/PressStart2P-Regular.ttf');
+    font-family: 'PixelFont'; /* Alias, falls "Press Start 2P" Probleme macht */
+    src: url('fonts/PressStart2P-Regular.ttf');
 }
+
 .root {
-    -fx-font-family: 'Press Start 2P', 'PixelFont', monospace;
+    -fx-font-family: 'Press Start 2P', 'PixelFont', monospace; /* Primäre Schriftart */
     -fx-text-fill: white;
-    -fx-font-smoothing-type: gray;
+    -fx-font-smoothing-type: gray; /* Wichtig für Pixel-Fonts */
 }
+
 #main-menu-background-container {
-    -fx-background-color: #100520;
+    -fx-background-color: #100520; /* Dunkelviolett */
 }
+
 #main-menu-layout {
-    -fx-background-color: transparent;
+    -fx-background-color: transparent; /* Layout über dem Hintergrund */
     -fx-padding: 20px;
 }
 
@@ -35,78 +38,76 @@
 #voice-selection-box,
 #info-area {
     -fx-background-color: transparent !important;
-    -fx-padding: 12px; /*Innenpadding für die Boxen */
+    -fx-padding: 12px;
     -fx-border-color: white, white, white, transparent;
     -fx-border-width: 2px, 2px, 2px, 0px;
     -fx-border-style: solid;
-    -fx-spacing: 12px; /*Abstand zwischen Elementen in der VBox */
+    -fx-spacing: 12px;
     -fx-border-radius: 0;
     -fx-background-radius: 0;
 }
-#voice-selection-box {
-    /* -fx-margin-right wird im Java-Code gesetzt oder kann hier definiert werden,
-       um den Abstand zur Info-Box zu steuern.
-       Wir erhöhen den Standardabstand des BorderPane durch Padding auf der Info-Box-Seite. */
-}
 
 #info-area {
-    -fx-margin-left: 40px; /*ABSTAND ZWISCHEN DEN BOXEN */
+    -fx-margin-left: 40px;
 }
 
 /* --- LISTVIEW UND SCROLLPANE (Stimmenliste) --- */
 #voice-selection-box .scroll-pane {
     -fx-background: transparent !important;
     -fx-background-color: transparent !important;
-    -fx-border-color: white!important;
+    -fx-border-color: white !important;
     -fx-border-width: 2px;
     -fx-padding: 0px;
 }
+
 #voice-selection-box .scroll-pane .viewport {
     -fx-background-color: transparent !important;
 }
+
 #voice-list-view {
     -fx-background-color: transparent !important;
     -fx-border-color: transparent;
-
     -fx-padding-right: 10px;
 }
+
 #voice-list-view .list-cell {
     -fx-background-color: transparent !important;
     -fx-background-radius: 0 !important;
-    -fx-padding: 4px 0px; /*vertikaler Abstand */
+    -fx-padding: 4px 0px;
     -fx-border-color: white white white transparent;
-    -fx-border-width: 1px, 1px, 1px, 0px;
+    -fx-border-width: 1px 1px 1px 0px;
     -fx-border-style: solid;
     -fx-margin-bottom: 6px;
     -fx-text-fill: white;
     -fx-border-radius: 0;
 }
+
 #voice-list-view .list-cell:first-cell {
     -fx-border-color: transparent white white transparent;
-    -fx-border-width: 0px, 1px, 1px, 0px;
+    -fx-border-width: 0px 1px 1px 0px;
 }
-#voice-list-view .list-cell:last-cell {
-    -fx-border-color: transparent white white transparent;
-    -fx-border-width: 0px, 1px, 1px, 0px;
-}
+
 #voice-list-view .list-cell:hover {
     -fx-background-color: rgba(255, 255, 255, 0.1) !important;
 }
+
 #voice-list-view .list-cell:selected {
     -fx-background-color: rgba(255, 255, 255, 0.20) !important;
-    -fx-border-color: white white white transparent!important;
+    -fx-border-color: white white white transparent !important;
 }
-.voice-list-cell-content { /* HBox in der Zelle */
-    -fx-padding: 4px 6px; /*Innenpadding */
+
+.voice-list-cell-content {
+    -fx-padding: 4px 6px;
     -fx-alignment: center-left;
     -fx-background-color: transparent !important;
 }
+
 .voice-name-label {
     -fx-font-size: 14px;
     -fx-text-fill: white;
 }
+
 .play-intro-button {
-    -fx-font-family: 'Press Start 2P', 'PixelFont', monospace;
     -fx-font-size: 14px;
     -fx-text-fill: white;
     -fx-min-width: 30px;
@@ -120,55 +121,53 @@
     -fx-border-radius: 0;
     -fx-background-radius: 0;
 }
+
 .play-intro-button:hover {
     -fx-background-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 /* --- INFO BEREICH --- */
-#info-area .scroll-pane { /* Falls die TextArea eine ScrollPane um sich hat*/
-    -fx-background-color: transparent !important;
-    -fx-background: transparent !important;
-    -fx-padding: 0px;
-}
-#info-area .scroll-pane .viewport {
+#info-area .scroll-pane .viewport { /* Gilt für die ScrollPane um die TextArea, falls vorhanden */
     -fx-background-color: transparent !important;
 }
+
 #info-text-area {
-    -fx-font-family: 'Press Start 2P', 'PixelFont', monospace;
     -fx-font-size: 11px;
     -fx-text-fill: white;
     -fx-control-inner-background: transparent !important;
     -fx-background-color: transparent !important;
     -fx-border-color: white, white, white, transparent;
     -fx-border-width: 2px, 2px, 2px, 0px;
-    /*-fx-padding: 6px;*/
+    -fx-padding: 6px;
     -fx-border-radius: 0;
     -fx-background-radius: 0;
     -fx-highlight-fill: rgba(255, 255, 255, 0.3);
     -fx-highlight-text-fill: white;
 }
 
-/* --- SCROLLBARS --- */
+/* --- SCROLLBARS allgemein --- */
 .scroll-bar {
     -fx-background-color: transparent;
     -fx-padding: 0px;
-    -fx-pref-width: 12px; /* Breite der Scrollbar-Spur */
+    -fx-pref-width: 12px;
     -fx-max-width: 12px;
 }
+
 .scroll-bar:vertical .track,
 .scroll-bar:horizontal .track {
-    -fx-background-color: transparent; /* Track selbst transparent */
+    -fx-background-color: transparent;
     -fx-border-color: transparent;
     -fx-background-radius: 0;
     -fx-border-radius: 0;
 }
-.scroll-bar .thumb { /* Der bewegliche Teil */
+
+.scroll-bar .thumb {
     -fx-background-color: white;
     -fx-background-radius: 0;
     -fx-border-color: #555;
     -fx-border-width: 1px;
-    /* -fx-pref-width: 8px; Daumenbreite, falls die Spur breiter ist */
 }
+
 .scroll-bar .increment-button,
 .scroll-bar .decrement-button {
     -fx-background-color: transparent;
@@ -178,24 +177,28 @@
     -fx-background-radius: 0;
     -fx-border-radius: 0;
     -fx-opacity: 0.7;
-    -fx-pref-height: 12px; /* Höhe der Pfeilbuttons */
-    -fx-pref-width: 12px;  /* Breite der Pfeilbuttons */
+    -fx-pref-height: 12px;
+    -fx-pref-width: 12px;
 }
+
 .scroll-bar .increment-button:hover,
 .scroll-bar .decrement-button:hover {
     -fx-opacity: 1.0;
 }
+
 .scroll-bar .increment-arrow,
 .scroll-bar .decrement-arrow {
     -fx-background-color: white;
-    -fx-shape: "M -2 -2 L 0 2 L 2 -2 Z"; /* Einfacher Pfeil nach oben, für unten umdrehen */
-    -fx-padding: 3px; /* Größe des Pfeilsymbols */
+    -fx-shape: "M -2 -2 L 0 2 L 2 -2 Z"; /* Pfeil nach oben */
+    -fx-padding: 3px;
     -fx-scale-x: 0.8;
     -fx-scale-y: 0.8;
 }
-.scroll-bar .decrement-arrow {
-    -fx-shape: "M -2 2 L 0 -2 L 2 2 Z";
-}
+.scroll-bar:vertical .increment-arrow { -fx-shape: "M -2 -2 L 0 2 L 2 -2 Z"; } /* Oben */
+.scroll-bar:vertical .decrement-arrow { -fx-shape: "M -2 2 L 0 -2 L 2 2 Z"; } /* Unten */
+.scroll-bar:horizontal .increment-arrow { -fx-shape: "M -2 -2 L 2 0 L -2 2 Z"; } /* Rechts */
+.scroll-bar:horizontal .decrement-arrow { -fx-shape: "M 2 -2 L -2 0 L 2 2 Z"; } /* Links */
+
 
 /* --- BESTÄTIGUNGSBUTTON --- */
 #confirm-voice-button {
@@ -209,47 +212,211 @@
     -fx-border-radius: 0;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 2, 0.3, 0, 1);
 }
+
 #confirm-voice-button:hover {
     -fx-background-color: #E0E0E0;
     -fx-text-fill: black;
 }
-/* mainmenu.css */
-/* ... (deine anderen Stile) ... */
 
-#credits-menu-pane { /* Der äußere StackPane-Container für die Credits */
-    -fx-background-color: rgba(16, 5, 32, 0.95); /* Sehr dunkler, fast opaker Hintergrund */
+/* --- PAUSE & GAME OVER MENÜ --- */
+/* Gemeinsame Basis für Overlay-Panes */
+#pause-menu-pane,
+#game-over-menu-pane {
+    -fx-alignment: center;
+    /* Der spezifische Hintergrund wird unten definiert */
+}
+
+/* Box, die den Inhalt der Menüs hält */
+.menu-content-box {
+    -fx-max-width: 450px;
+    -fx-padding: 30px 40px;
+    -fx-spacing: 25px;
+    -fx-alignment: center;
+    -fx-background-radius: 5px; /* Für den Hintergrund der Box */
+    -fx-border-radius: 4px;     /* Für den Rand der Box */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 15, 0.3, 0, 2); /* Allgemeiner Schatten */
+}
+
+/* --- Spezifisches Styling für das PAUSE-MENÜ --- */
+#pause-menu-pane {
+    /* Hintergrund der gesamten Pause-Fläche (hinter der Box) */
+    -fx-background-color: rgba(0, 20, 60, 0.90); /* Dunkelblau, leicht transparent */
+}
+
+#pause-menu-pane .menu-content-box {
+    -fx-background-color: rgba(0, 10, 30, 0.75); /* Sehr dunkles Blau für den Box-Hintergrund */
+    -fx-border-color: #00BFFF; /* DeepSkyBlue oder ein anderes helles Blau/Türkis */
+    -fx-border-width: 2.5px;
+}
+
+#pause-menu-pane .menu-title { /* "PAUSED" Text */
+    -fx-font-size: 36px; /* Etwas größer als der Standard .menu-title */
+    -fx-text-fill: #33CCFF; /* Helleres Blau, passend zum Rand */
+    -fx-effect: dropshadow(gaussian, rgba(50,200,255,0.5), 12, 0.2, 0, 0); /* Blauer Glow */
+    -fx-padding-bottom: 5px;
+}
+
+/* Buttons im Pause-Menü könnten den Standard .menu-button-Stil verwenden
+   oder hier spezifisch angepasst werden, falls gewünscht.
+   Für Konsistenz mit dem Game-Over-Menü-Button-Stil, aber in Blau/Grün: */
+#pause-menu-pane .menu-button {
+    -fx-font-size: 17px;
+    -fx-text-fill: white;
+    -fx-background-color: #006400; /* Dunkelgrün */
+    -fx-border-color: #32CD32;   /* LimeGreen Rand */
+    -fx-border-width: 2px;
+    /* -fx-min-width: 220px; /* Etwas breiter, falls nötig */
+}
+
+#pause-menu-pane .menu-button:hover {
+    -fx-background-color: #228B22; /* ForestGreen bei Hover */
+    -fx-border-color: #90EE90;   /* LightGreen Rand bei Hover */
+}
+
+
+/* --- Spezifisches Styling für das GAME OVER MENÜ (wie zuvor) --- */
+#game-over-menu-pane {
+    -fx-background-color: rgba(60, 0, 10, 0.92);
+}
+
+#game-over-menu-pane .menu-content-box {
+    -fx-background-color: rgba(20, 0, 0, 0.7);
+    -fx-border-color: #FF4444;
+    -fx-border-width: 2.5px;
+}
+
+#game-over-menu-pane .menu-title {
+    -fx-font-size: 40px;
+    -fx-text-fill: #FF3333;
+    -fx-effect: dropshadow(gaussian, #FF0000, 15, 0.5, 0, 0);
+    -fx-padding-bottom: 10px;
+}
+
+#game-over-menu-pane .menu-button {
+    -fx-font-size: 17px;
+    -fx-text-fill: white;
+    -fx-background-color: #8B0000;
+    -fx-border-color: #FF6347;
+    -fx-border-width: 2px;
+    -fx-padding: 10px 25px;
+}
+
+#game-over-menu-pane .menu-button:hover {
+    -fx-background-color: #A52A2A;
+    -fx-border-color: #FFA07A;
+    -fx-text-fill: white;
+}
+
+
+/* Allgemeine Menü-Titel (Basis-Styling) */
+.menu-title {
+    -fx-font-size: 28px; /* Standardgröße, wird von spezifischen Regeln überschrieben */
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.75), 2, 0.5, 0, 1);
+}
+
+/* Allgemeine Menü-Buttons (Basis-Styling) */
+.menu-button, .menu-button-bottom {
+    -fx-font-size: 16px;
+    -fx-text-fill: #100520; /* Dunkler Text auf hellem Button (Standard) */
+    -fx-background-color: white;
+    -fx-padding: 10px 20px;
+    -fx-border-color: white;
+    -fx-border-width: 2px;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+    -fx-min-width: 200px;
     -fx-alignment: center;
 }
 
-/*.credits-scroll-pane {*/
-/*    -fx-background-color: transparent;*/
-/*    -fx-border-color: transparent;*/
-/*    -fx-padding: 20px 50px; !* Mehr seitliches Padding, damit der Text nicht am Rand klebt *!*/
-/*    -fx-max-width: 700px; !* Maximale Breite für die Credit-Liste *!*/
-/*    -fx-max-height: 80%; !* Nimmt maximal 80% der Fensterhöhe ein *!*/
-/*}*/
+.menu-button:hover, .menu-button-bottom:hover {
+    -fx-background-color: #E0E0E0; /* Heller bei Hover (Standard) */
+    -fx-text-fill: black;
+}
 
-/*.credits-text-container { !* Die VBox in der ScrollPane *!*/
-/*    -fx-alignment: top-center;*/
-/*    -fx-spacing: 8px; !* Kleinerer Abstand zwischen den Credit-Blöcken *!*/
-/*}*/
 
-/*.credit-title-label {*/
-/*    -fx-font-family: 'Press Start 2P', 'PixelFont', monospace;*/
-/*    -fx-font-size: 18px; !* Größe anpassen *!*/
-/*    -fx-text-fill: #E0E0E0; !* Helles Grau *!*/
-/*    -fx-padding-top: 15px; !* Abstand über den Titeln *!*/
-/*}*/
+/* --- CREDITS --- */
+#credits-menu-pane {
+    -fx-background-color: rgb(10, 0, 20); /* Sehr dunkles Violett/Schwarz, opak */
+    -fx-alignment: center; /* Zentriert die ScrollPane innerhalb dieser Pane */
+}
 
-/*.credit-names-label {*/
-/*    -fx-font-family: 'Press Start 2P', 'PixelFont', monospace;*/
-/*    -fx-font-size: 15px; !* Größe anpassen *!*/
-/*    -fx-text-fill: white;*/
-/*    -fx-text-alignment: center;*/
-/*    -fx-wrap-text: true;*/
-/*}*/
+.credits-scroll-pane {
+    -fx-background-color: transparent; /* ScrollPane selbst unsichtbar machen */
+    -fx-border-color: transparent;     /* Kein Rand für die ScrollPane */
+    -fx-padding: 10px;                 /* Etwas Padding um den Inhalt, falls nötig, aber meiste über VBox */
+    /* Die Größe wird programmatisch gesetzt, CSS kann Fallbacks oder max-Werte bieten */
+    /* -fx-max-width: 80%; (wird programmatisch gesetzt) */
+    /* -fx-max-height: 90%; (wird programmatisch gesetzt) */
+}
 
-/*!* Der Skip-Button (kann menu-button-bottom wiederverwenden oder eigene Klasse) *!*/
-/*#credits-menu-pane .menu-button-bottom { !* Spezifischer, falls nötig *!*/
-/*    !* -fx-font-size: 12px; *!*/
-/*}*/
+/* Der Viewport der ScrollPane (der den Inhalt anzeigt) */
+.credits-scroll-pane .viewport {
+    -fx-background-color: transparent; /* Stellt sicher, dass der Inhalt der VBox sichtbar ist */
+}
+
+/* Die VBox, die den eigentlichen Text enthält */
+#credits-text-container {
+    -fx-alignment: center;     /* Zentriert die Labels horizontal in der VBox */
+    -fx-spacing: 5px;          /* Standardabstand zwischen den Zeilen/Labels */
+    -fx-padding: 30px 10px;    /* Oben/Unten mehr Padding für den Start/Ende des Rolls, Seiten weniger */
+    -fx-background-color: transparent; /* Sicherstellen, dass es transparent ist */
+}
+
+/* Die Schriftart wird von .root geerbt: 'Press Start 2P' */
+
+.credit-header { /* "Herzlichen Glückwunsch!" */
+    -fx-font-size: 26px;
+    -fx-text-fill: #00FFFF; /* Helles Cyan, passend zu In-Game Popups */
+    -fx-padding-bottom: 10px;
+    -fx-effect: dropshadow(gaussian, rgba(0,220,220,0.7), 10, 0.3, 0, 0); /* Leichter Glow */
+}
+
+.credit-sub-header { /* "Du hast Musical Invaders besiegt!", "Danke fürs Spielen!" */
+    -fx-font-size: 20px;
+    -fx-text-fill: white;
+    -fx-padding-top: 10px;
+    -fx-padding-bottom: 15px;
+}
+
+.credit-title-label { /* "== Stimmen von ==", "== Entwicklung ==" */
+    -fx-font-size: 18px;
+    -fx-text-fill: #cf00fd; /* Sehr helles Grau */
+    -fx-padding-top: 20px;
+    -fx-padding-bottom: 5px;
+    -fx-effect: dropshadow(gaussian, rgb(198, 0, 220), 10, 0.3, 0, 0);
+}
+
+.credit-names-label { /* Die einzelnen Namen */
+    -fx-font-size: 16px;
+    -fx-text-fill: white;
+    -fx-text-alignment: center;
+    -fx-wrap-text: true; /* Falls Namen umgebrochen werden müssen */
+}
+
+.credit-default-label { /* Wird für die leeren "" Strings verwendet für Abstände */
+    -fx-font-size: 14px; /* Klein, da nur für Abstand */
+    /* Keine Textfarbe nötig, da der Text leer ist */
+}
+
+/* Scrollbar-Stile für die Credits-ScrollPane, falls sie doch mal sichtbar werden (sollten sie nicht) */
+.credits-scroll-pane .scroll-bar:vertical,
+.credits-scroll-pane .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+.credits-scroll-pane .scroll-bar .thumb {
+    -fx-background-color: rgba(200, 200, 200, 0.5); /* Halbtransparenter Thumb */
+    -fx-background-radius: 3px;
+}
+
+.credits-scroll-pane .scroll-bar .increment-button,
+.credits-scroll-pane .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 3px;
+}
+
+.credits-scroll-pane .scroll-bar .increment-arrow,
+.credits-scroll-pane .scroll-bar .decrement-arrow {
+    -fx-background-color: rgba(200, 200, 200, 0.7); /* Farbe der Pfeile */
+}

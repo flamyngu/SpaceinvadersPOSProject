@@ -2,7 +2,8 @@ package org.example.spaceinvaders;
 
 import javafx.animation.PauseTransition;
 import javafx.scene.Node;
-import javafx.scene.shape.Rectangle;
+import javafx.scene.image.ImageView; // Import
+// import javafx.scene.shape.Rectangle; // Nicht mehr für Spieler-Projektile verwendet
 import javafx.util.Duration;
 
 import java.util.ArrayList;
@@ -21,7 +22,7 @@ public class GameUpdater {
     private double waveTime = 0;
     private long lastEnemyMoveTimeWave2 = 0;
     private int lastProcessedWaveForTimeReset = 0;
-    private boolean wave3Initialized = false;
+    // private boolean wave3Initialized = false; // wave3Initialized wurde im vorherigen Code nicht verwendet, kann entfernt werden
 
 
     public GameUpdater(GameEntityManager entityManager, InputHandler inputHandler,
@@ -44,12 +45,12 @@ public class GameUpdater {
         BossController bossController = entityManager.getBossController();
 
         if (entityManager.isBossActive() && bossController != null) {
-            wave3Initialized = false;
+            // wave3Initialized = false; // Nicht verwendet
             bossController.updateBossMovement(now, deltaTime);
         } else if (!entityManager.getEnemies().isEmpty()) {
             updateEnemyMovement(deltaTime, now);
         } else if (entityManager.getEnemies().isEmpty() && !entityManager.isBossActive() && !entityManager.isLoadingNextWave() && !entityManager.wasBossJustDefeated()) {
-            wave3Initialized = false;
+            // wave3Initialized = false; // Nicht verwendet
             entityManager.spawnNextWaveOrBoss();
         }
 
@@ -67,7 +68,7 @@ public class GameUpdater {
 
     private void updatePlayer(long now) {
         Player player = entityManager.getPlayer();
-        if (player == null) {
+        if (player == null || player.getNode() == null) { // Zusätzlicher Null-Check für Node
             return;
         }
         double dx = 0;
@@ -88,11 +89,11 @@ public class GameUpdater {
     }
 
     private void updateProjectiles() {
-        Iterator<Rectangle> iterator = entityManager.getPlayerProjectiles().iterator();
+        Iterator<ImageView> iterator = entityManager.getPlayerProjectiles().iterator(); // Typ geändert
         while (iterator.hasNext()) {
-            Rectangle p = iterator.next();
-            p.setY(p.getY() - gameDimensions.getProjectileSpeed());
-            if (p.getY() + p.getHeight() < 0) {
+            ImageView p = iterator.next(); // Typ geändert
+            p.setLayoutY(p.getLayoutY() - gameDimensions.getProjectileSpeed()); // Verwende setLayoutY
+            if (p.getLayoutY() + p.getFitHeight() < 0) { // Verwende getFitHeight
                 iterator.remove();
                 entityManager.removeProjectileNode(p);
             }
@@ -107,7 +108,7 @@ public class GameUpdater {
         if (currentWave != lastProcessedWaveForTimeReset) {
             waveTime = 0;
             lastProcessedWaveForTimeReset = currentWave;
-            wave3Initialized = false;
+            // wave3Initialized = false; // Nicht verwendet
         }
 
         if (currentWave == 1 || (currentWave > 0 && currentWave % 3 == 1) ) {
@@ -116,7 +117,7 @@ public class GameUpdater {
             updateAcceleratingMovementOriginal(now);
         } else if (currentWave > 0 && currentWave % 3 == 0) {
             updateFormationMovementOriginal(deltaTime, now);
-        } else {
+        } else { // Fallback für unerwartete Wellennummern
             updateBasicMovementOriginal(deltaTime);
         }
     }
@@ -135,8 +136,9 @@ public class GameUpdater {
         for (Enemy enemy : currentEnemies) {
             Node enemyNode = enemy.getNode();
             if (enemyNode == null) continue;
+            double nodeWidth = (enemyNode instanceof ImageView) ? ((ImageView)enemyNode).getFitWidth() : enemyNode.getBoundsInLocal().getWidth();
             groupLeftMost = Math.min(groupLeftMost, enemyNode.getLayoutX());
-            groupRightMost = Math.max(groupRightMost, enemyNode.getLayoutX() + enemyNode.getBoundsInLocal().getWidth());
+            groupRightMost = Math.max(groupRightMost, enemyNode.getLayoutX() + nodeWidth);
         }
 
         double moveXThisFrameForCheck = effectiveSpeedX * deltaTime * 60.0;
@@ -145,20 +147,21 @@ public class GameUpdater {
 
         if (currentDirection > 0 && groupRightMost + moveXThisFrameForCheck > gameDimensions.getWidth()) {
             reverseDirectionAndMoveDown = true;
-        } else if (currentDirection < 0 && groupLeftMost - moveXThisFrameForCheck < 0) {
+        } else if (currentDirection < 0 && groupLeftMost + moveXThisFrameForCheck < 0) { // Hier war ein Fehler: -moveXThisFrameForCheck muss + sein oder der Vergleich umgekehrt
             reverseDirectionAndMoveDown = true;
         }
+
 
         double dx = 0;
         double dy = 0;
 
         if (reverseDirectionAndMoveDown) {
             entityManager.setEnemyMovementDirection(currentDirection * -1);
-            dy = effectiveSpeedY * deltaTime * 60.0;
-            if (dy == 0 && effectiveSpeedY != 0) dy = effectiveSpeedY;
+            dy = effectiveSpeedY * deltaTime * 60.0; // Bewegung pro Frame
+            if (dy == 0 && effectiveSpeedY != 0) dy = effectiveSpeedY; // Fallback falls deltaTime 0 ist
         } else {
-            dx = effectiveSpeedX * currentDirection * deltaTime * 60.0;
-            if (dx == 0 && effectiveSpeedX != 0) dx = effectiveSpeedX * currentDirection;
+            dx = effectiveSpeedX * currentDirection * deltaTime * 60.0; // Bewegung pro Frame
+            if (dx == 0 && effectiveSpeedX != 0) dx = effectiveSpeedX * currentDirection; // Fallback
         }
 
         for (Enemy enemy : currentEnemies) {
@@ -168,7 +171,8 @@ public class GameUpdater {
             enemyNode.setLayoutX(enemyNode.getLayoutX() + dx);
             enemyNode.setLayoutY(enemyNode.getLayoutY() + dy);
 
-            double enemyBottomY = enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight();
+            double nodeHeight = (enemyNode instanceof ImageView) ? ((ImageView)enemyNode).getFitHeight() : enemyNode.getBoundsInLocal().getHeight();
+            double enemyBottomY = enemyNode.getLayoutY() + nodeHeight;
             double playerHeightForGameOver = gameDimensions.getPlayerHeight();
             if (playerHeightForGameOver <=0 && entityManager.getPlayer() != null) playerHeightForGameOver = entityManager.getPlayer().getHeight();
             if (playerHeightForGameOver <=0) playerHeightForGameOver = 30;
@@ -176,12 +180,10 @@ public class GameUpdater {
             double gameOverLine = gameDimensions.getHeight() - (playerHeightForGameOver * 0.8);
 
             if (enemyBottomY >= gameOverLine) {
-                // System.out.println("!!! GAME OVER TRIGGER durch Gegner am unteren Rand (updateBasicMovementOriginal) !!!"); // Log von vorheriger Anfrage
-                // ... (andere detaillierte Logs)
                 if (mainApp.getCurrentGameState() == GameState.PLAYING) {
                     mainApp.triggerGameOver();
                 }
-                return;
+                return; // Spiel vorbei, keine weiteren Updates für diese Methode
             }
         }
     }
@@ -191,24 +193,27 @@ public class GameUpdater {
         int totalEnemiesAtStart = GameDimensions.ENEMIES_PER_ROW * GameDimensions.ENEMY_ROWS;
         int remainingEnemies = currentEnemies.size();
         double speedMultiplier = Math.max(1.0, (double) totalEnemiesAtStart / Math.max(1, remainingEnemies));
-        speedMultiplier = Math.min(speedMultiplier, 4.0);
+        speedMultiplier = Math.min(speedMultiplier, 4.0); // Max Multiplikator
 
-        long stepIntervalNanos = (long) (600_000_000 / speedMultiplier);
+        long stepIntervalNanos = (long) (600_000_000 / speedMultiplier); // Basisintervall / Multiplikator
 
         if (now - lastEnemyMoveTimeWave2 < stepIntervalNanos) return;
         lastEnemyMoveTimeWave2 = now;
 
         double currentDirection = entityManager.getEnemyMovementDirection();
-        double stepSizeX = entityManager.getEnemyGroupSpeedX() * 8 * speedMultiplier;
-        double stepSizeY = entityManager.getEnemyGroupSpeedY() * 1.5;
+        double stepSizeX = entityManager.getEnemyGroupSpeedX() * 8 * speedMultiplier; // Basis-Schrittweite * Multiplikator
+        double stepSizeY = entityManager.getEnemyGroupSpeedY() * 1.5; // Vertikale Schrittweite
 
         boolean reverseDirectionAndMoveDown = false;
         double groupLeftMost = Double.MAX_VALUE;
         double groupRightMost = Double.MIN_VALUE;
 
-        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;
+        for (Enemy enemy : currentEnemies) {
+            Node enemyNode = enemy.getNode();
+            if (enemyNode == null) continue;
+            double nodeWidth = (enemyNode instanceof ImageView) ? ((ImageView)enemyNode).getFitWidth() : enemyNode.getBoundsInLocal().getWidth();
             groupLeftMost = Math.min(groupLeftMost, enemyNode.getLayoutX());
-            groupRightMost = Math.max(groupRightMost, enemyNode.getLayoutX() + enemyNode.getBoundsInLocal().getWidth());
+            groupRightMost = Math.max(groupRightMost, enemyNode.getLayoutX() + nodeWidth);
         }
 
         if (currentDirection > 0 && groupRightMost + stepSizeX > gameDimensions.getWidth()) {
@@ -227,18 +232,20 @@ public class GameUpdater {
             dx = stepSizeX * currentDirection;
         }
 
-        for (Enemy enemy : currentEnemies) { Node enemyNode = enemy.getNode(); if (enemyNode == null) continue;
+        for (Enemy enemy : currentEnemies) {
+            Node enemyNode = enemy.getNode();
+            if (enemyNode == null) continue;
             enemyNode.setLayoutX(enemyNode.getLayoutX() + dx);
             enemyNode.setLayoutY(enemyNode.getLayoutY() + dy);
 
-            double enemyBottomY = enemyNode.getLayoutY() + enemyNode.getBoundsInLocal().getHeight();
+            double nodeHeight = (enemyNode instanceof ImageView) ? ((ImageView)enemyNode).getFitHeight() : enemyNode.getBoundsInLocal().getHeight();
+            double enemyBottomY = enemyNode.getLayoutY() + nodeHeight;
             double playerHeightForGameOver = gameDimensions.getPlayerHeight();
             if (playerHeightForGameOver <=0 && entityManager.getPlayer() != null) playerHeightForGameOver = entityManager.getPlayer().getHeight();
             if (playerHeightForGameOver <=0) playerHeightForGameOver = 30;
 
             double gameOverLine = gameDimensions.getHeight() - (playerHeightForGameOver * 0.8);
             if (enemyBottomY >= gameOverLine) {
-                // System.out.println("!!! GAME OVER TRIGGER durch Gegner am unteren Rand (updateAcceleratingMovementOriginal) !!!"); // Log von vorheriger Anfrage
                 if (mainApp.getCurrentGameState() == GameState.PLAYING) mainApp.triggerGameOver();
                 return;
             }
@@ -246,15 +253,15 @@ public class GameUpdater {
     }
 
     private void updateFormationMovementOriginal(double deltaTime, long now) {
-        waveTime += deltaTime * 2.5;
+        waveTime += deltaTime * 2.5; // Geschwindigkeit der Wellenbewegung
 
         List<Enemy> currentEnemies = entityManager.getEnemies();
         if (currentEnemies.isEmpty()) return;
 
-        double constantDownwardSpeed = entityManager.getEnemyGroupSpeedY() * 0.02;
+        double constantDownwardSpeed = entityManager.getEnemyGroupSpeedY() * 0.02; // Sehr langsame konstante Abwärtsbewegung
 
-        final double WAVE_AMPLITUDE = 200.0;
-        final double WAVE_FREQUENCY = 3;
+        final double WAVE_AMPLITUDE = gameDimensions.getWidth() * 0.25; // Amplitude relativ zur Bildschirmbreite
+        final double WAVE_FREQUENCY = 2.5; // Frequenz der Sinuswelle
 
         int enemyIndex = 0;
         int totalEnemiesPerRow = GameDimensions.ENEMIES_PER_ROW;
@@ -263,6 +270,9 @@ public class GameUpdater {
             Node enemyNode = enemy.getNode();
             if (enemyNode == null) continue;
 
+            double nodeWidth = (enemyNode instanceof ImageView) ? ((ImageView)enemyNode).getFitWidth() : enemyNode.getBoundsInLocal().getWidth();
+            double nodeHeight = (enemyNode instanceof ImageView) ? ((ImageView)enemyNode).getFitHeight() : enemyNode.getBoundsInLocal().getHeight();
+
             int row = enemyIndex / totalEnemiesPerRow;
             int col = enemyIndex % totalEnemiesPerRow;
             double rowPhaseOffset = row * 0.8;
@@ -270,25 +280,29 @@ public class GameUpdater {
             double waveOffset = Math.sin((waveTime + rowPhaseOffset + colPhaseOffset) * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
 
             double centerX = gameDimensions.getWidth() / 2;
-            double baseX = centerX - (totalEnemiesPerRow * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX())) / 2;
-            double targetX = baseX + col * (gameDimensions.getEnemyWidth() + gameDimensions.getEnemySpacingX()) + waveOffset;
-            targetX = Math.max(10, Math.min(targetX, gameDimensions.getWidth() - gameDimensions.getEnemyWidth() - 10));
+            // Basis-X-Position, um die Formation zu zentrieren
+            double formationTotalWidth = totalEnemiesPerRow * (nodeWidth + gameDimensions.getEnemySpacingX()) - gameDimensions.getEnemySpacingX();
+            double baseX = centerX - formationTotalWidth / 2;
+
+            double targetX = baseX + col * (nodeWidth + gameDimensions.getEnemySpacingX()) + waveOffset;
+            // Sicherstellen, dass Gegner im Bildschirm bleiben
+            targetX = Math.max(10, Math.min(targetX, gameDimensions.getWidth() - nodeWidth - 10));
             enemyNode.setLayoutX(targetX);
 
+            // Konstante Abwärtsbewegung
             double downwardMovementThisFrame = constantDownwardSpeed * deltaTime * 60.0;
             if (downwardMovementThisFrame == 0 && constantDownwardSpeed != 0) downwardMovementThisFrame = constantDownwardSpeed;
 
             double newY = enemyNode.getLayoutY() + downwardMovementThisFrame;
             enemyNode.setLayoutY(newY);
 
-            double enemyBottomY = newY + enemyNode.getBoundsInLocal().getHeight();
+            double enemyBottomY = newY + nodeHeight;
             double playerHeightForGameOver = gameDimensions.getPlayerHeight();
             if (playerHeightForGameOver <=0 && entityManager.getPlayer() != null) playerHeightForGameOver = entityManager.getPlayer().getHeight();
             if (playerHeightForGameOver <=0) playerHeightForGameOver = 30;
 
             double gameOverLine = gameDimensions.getHeight() - (playerHeightForGameOver * 0.8);
             if (enemyBottomY >= gameOverLine) {
-                // System.out.println("!!! GAME OVER TRIGGER durch Gegner am unteren Rand (updateFormationMovementOriginal) !!!"); // Log von vorheriger Anfrage
                 if (mainApp.getCurrentGameState() == GameState.PLAYING) mainApp.triggerGameOver();
                 return;
             }
@@ -304,10 +318,10 @@ public class GameUpdater {
         }
 
         BossController bossController = entityManager.getBossController();
-        Iterator<Rectangle> projIterator = entityManager.getPlayerProjectiles().iterator();
+        Iterator<ImageView> projIterator = entityManager.getPlayerProjectiles().iterator(); // Typ geändert
 
         while (projIterator.hasNext()) {
-            Rectangle projectile = projIterator.next();
+            ImageView projectile = projIterator.next(); // Typ geändert
             boolean projectileUsedThisHit = false;
 
             if (entityManager.isBossActive() && bossController != null && entityManager.getBossEnemy() != null) {
@@ -316,43 +330,47 @@ public class GameUpdater {
                     boolean isIntersecting = projectile.getBoundsInParent().intersects(currentBossEntity.getNode().getBoundsInParent());
 
                     if (isIntersecting && !bossController.isBossRetreating()) {
-                        // System.out.println("KOLLISION: Spieler-Projektil vs Boss-Körper"); // Log von vorheriger Anfrage
                         bossController.bossTakeHit();
-                        Enemy bossAfterHit = entityManager.getBossEnemy();
-                        if (bossAfterHit != null && !bossAfterHit.isAlive()) {
-                            if (bossController.getBossPhase() >= 3) {
+                        Enemy bossAfterHit = entityManager.getBossEnemy(); // Erneut holen, da Zustand sich ändern kann
+                        if (bossAfterHit != null && !bossAfterHit.isAlive()) { // Boss besiegt in dieser Phase
+                            if (bossController.getBossPhase() >= 3) { // Endgültig besiegt
                                 uiManager.addScore(currentBossEntity.getPoints());
                                 if (soundManager != null) soundManager.playBossFinalDefeat();
-                                entityManager.bossDefeated();
+                                entityManager.bossDefeated(); // Markiert Boss als besiegt
                             }
-                        } else if (bossAfterHit != null) {
+                            // Wenn nicht endgültig besiegt, startet der Rückzug in bossTakeHit() -> startBossRetreat()
+                        } else if (bossAfterHit != null) { // Boss nur getroffen
                             if (soundManager != null) soundManager.playEnemyHit();
                         }
                         projectileUsedThisHit = true;
                     }
                 }
+                // Kollision mit Minions, während Boss sich zurückzieht
                 if (!projectileUsedThisHit && bossController.isBossRetreating() && !bossController.getMinionEnemies().isEmpty()) {
-                    List<Rectangle> singleProjectileList = new ArrayList<>();
+                    // checkPlayerProjectileVsMinionCollisions erwartet List<ImageView>
+                    List<ImageView> singleProjectileList = new ArrayList<>();
                     singleProjectileList.add(projectile);
                     if (bossController.checkPlayerProjectileVsMinionCollisions(singleProjectileList, uiManager)) {
-                        // System.out.println("KOLLISION: Spieler-Projektil vs Minion (Boss retreating)"); // Log von vorheriger Anfrage
                         if (soundManager != null) soundManager.playEnemyHit();
                         projectileUsedThisHit = true;
+                        // Das Projektil wird in checkPlayerProjectileVsMinionCollisions entfernt, wenn es trifft.
+                        // Wir müssen es hier nicht erneut aus dem Iterator entfernen, wenn es dort schon passiert.
+                        // Um sicherzugehen, können wir den Rückgabewert prüfen oder die Logik anpassen.
+                        // Fürs Erste: Wenn check... true zurückgibt, wurde es dort behandelt.
                     }
                 }
             }
-            else if (!entityManager.getEnemies().isEmpty()) {
+            else if (!entityManager.getEnemies().isEmpty()) { // Normale Gegner
                 Iterator<Enemy> enemyIterator = entityManager.getEnemies().iterator();
                 while (enemyIterator.hasNext()) {
                     Enemy enemy = enemyIterator.next();
                     if (enemy.getNode() != null && projectile.getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {
-                        // System.out.println("KOLLISION: Spieler-Projektil vs Normaler Gegner (" + enemy + ")"); // Log von vorheriger Anfrage
                         enemy.takeHit();
                         if (soundManager != null) soundManager.playEnemyHit();
 
                         if (!enemy.isAlive()) {
-                            enemyIterator.remove();
-                            entityManager.removeEnemyNode(enemy.getNode());
+                            enemyIterator.remove(); // Entferne logischen Gegner
+                            entityManager.removeEnemyNode(enemy.getNode()); // Entferne grafischen Node
                             uiManager.addScore(enemy.getPoints());
                         }
                         projectileUsedThisHit = true;
@@ -361,12 +379,13 @@ public class GameUpdater {
                 }
             }
 
-            if (projectileUsedThisHit) {
+            if (projectileUsedThisHit && playerProjectilesContains(projectile)) { // Nur entfernen, wenn noch in der Liste
                 projIterator.remove();
                 entityManager.removeProjectileNode(projectile);
             }
         }
 
+        // Kollision Spieler mit Gegnern/Boss
         boolean playerHitSomething = false;
         String hitReason = "Unbekannt";
 
@@ -387,9 +406,9 @@ public class GameUpdater {
                 playerHitSomething = true;
             }
         } else if (!entityManager.getEnemies().isEmpty()) {
-            for (Enemy enemy : new ArrayList<>(entityManager.getEnemies())) {
+            for (Enemy enemy : new ArrayList<>(entityManager.getEnemies())) { // Kopie für sichere Iteration
                 if (enemy.getNode() != null && player.getNode().getBoundsInParent().intersects(enemy.getNode().getBoundsInParent())) {
-                    hitReason = "Spieler vs Normaler Gegner (" + enemy + ") an Pos: " + enemy.getNode().getLayoutX() + "," + enemy.getNode().getLayoutY();
+                    hitReason = "Spieler vs Normaler Gegner";
                     playerHitSomething = true;
                     break;
                 }
@@ -397,8 +416,6 @@ public class GameUpdater {
         }
 
         if (playerHitSomething) {
-            // System.out.println("!!! GameUpdater.checkCollisions: playerHitSomething ist true !!! Grund: " + hitReason); // Log von vorheriger Anfrage
-            // ... (andere detaillierte Logs sind schon da) ...
             if (soundManager != null) {
                 soundManager.playPlayerEnemyCollision();
             }
@@ -406,10 +423,18 @@ public class GameUpdater {
         }
     }
 
+    // Hilfsmethode, um zu prüfen, ob ein Projektil noch in der Liste ist
+    // (nötig, da checkPlayerProjectileVsMinionCollisions es evtl. schon entfernt hat)
+    private boolean playerProjectilesContains(ImageView projectile) {
+        for (ImageView p : entityManager.getPlayerProjectiles()) {
+            if (p == projectile) return true;
+        }
+        return false;
+    }
+
 
     private void handlePlayerDeath() {
         Player player = entityManager.getPlayer(); if (player == null) return;
-        // System.out.println("GameUpdater.handlePlayerDeath(): Spieler gestorben. GameState: " + mainApp.getCurrentGameState()); // Log von vorheriger Anfrage
         if (mainApp.getCurrentGameState() == GameState.PLAYING) {
             if (soundManager != null) {
                 soundManager.playPlayerDeath();

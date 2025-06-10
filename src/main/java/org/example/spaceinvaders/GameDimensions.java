@@ -4,13 +4,13 @@ public class GameDimensions {
     private final double width;
     private final double height;
 
-    public static final double PLAYER_WIDTH_RATIO = 60.0 / 800.0; //0,075
-    public static final double PLAYER_HEIGHT_RATIO = 30.0 / 600.0; //0,05
+    public static final double PLAYER_WIDTH_RATIO = 90.0 / 800.0; //0,075
+    public static final double PLAYER_HEIGHT_RATIO = 45.0 / 600.0; //0,05
     public static final double ENEMY_WIDTH_RATIO = 40.0 / 800.0;
     public static final double ENEMY_HEIGHT_RATIO = 40.0 / 600.0;
     public static final double ENEMY_SPACING_X_RATIO = 15.0 / 800.0;
     public static final double ENEMY_SPACING_Y_RATIO = 10.0 / 600.0;
-    public static final double PROJECTILE_WIDTH_RATIO = 5.0 / 800.0;
+    public static final double PROJECTILE_WIDTH_RATIO = 15.0 / 800.0;
     public static final double PROJECTILE_HEIGHT_RATIO = 15.0 / 600.0;
     public static final int BOSS_HEALTH = 10; // War GameDimensions.BOSS_HEALTH
     public static final int BOSS_POINTS = 250;
