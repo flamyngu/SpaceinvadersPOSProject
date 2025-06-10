@@ -9,12 +9,34 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="finally added The sounds&#10;&#10;8 Juli 2025">
+    <list default="true" id="4c91a9e1-7195-4cf0-907d-02ab616834f4" name="Changes" comment="Added General TK25&#10;need to add Beschreibung to &quot;Lebron James&quot; and &quot;Momoko X Selin&quot; and &quot;General TK25&quot; AND need to do some art for the spaceships &#10;&#10;10 Juli 2025">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/GameDimensions.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/MusicalInvaders.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/mainmenu.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/mainmenu.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Leo Fukahori/Jubel.wav" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/sfx/Leo Fukahori/Jubel.wav" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Leo Fukahori/Jubel2.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/VoiceProfile.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/spaceinvaders/VoiceProfile.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/Kollision/Kollision1.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/Kollision/Kollision1.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/Kollision/Kollision2.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/Kollision/Kollision2.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/SchussBoss/schuss1.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/SchussBoss/schuss1.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/SchussBoss/schuss2.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/SchussBoss/schuss2.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/SchussPlayer/schuss1.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/SchussPlayer/schuss1.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/SchussPlayer/schuss2.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/SchussPlayer/schuss2.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/SchussPlayer/schuss3.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/SchussPlayer/schuss3.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/TodBoss/Tod1.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/TodBoss/Tod1.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/TodBoss/Tod2.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/TodBoss/Tod2.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/TodEnemy/Tod1.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/TodEnemy/Tod1.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/TodPlayer/Tod1.opus" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/TodPlayer/Tod1.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/sfx/Der Franzose/Vorstellung.wav" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -176,6 +198,8 @@
       <workItem from="1748622411747" duration="12696000" />
       <workItem from="1749392594273" duration="10839000" />
       <workItem from="1749496397787" duration="7956000" />
+      <workItem from="1749583135885" duration="167000" />
+      <workItem from="1749583460883" duration="1371000" />
     </task>
     <task id="LOCAL-00001" summary="First Logic + Score">
       <option name="closed" value="true" />

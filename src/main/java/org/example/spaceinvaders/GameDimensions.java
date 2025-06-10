@@ -4,8 +4,8 @@ public class GameDimensions {
     private final double width;
     private final double height;
 
-    public static final double PLAYER_WIDTH_RATIO = 60.0 / 800.0;
-    public static final double PLAYER_HEIGHT_RATIO = 30.0 / 600.0;
+    public static final double PLAYER_WIDTH_RATIO = 60.0 / 800.0; //0,075
+    public static final double PLAYER_HEIGHT_RATIO = 30.0 / 600.0; //0,05
     public static final double ENEMY_WIDTH_RATIO = 40.0 / 800.0;
     public static final double ENEMY_HEIGHT_RATIO = 40.0 / 600.0;
     public static final double ENEMY_SPACING_X_RATIO = 15.0 / 800.0;
@@ -29,13 +29,17 @@ public class GameDimensions {
     private final double projectileHeight;
     private final double playerSpeedBase;
     private final double projectileSpeedBase;
+    private final double winHeight;
+    private final double winWidth;
 
 
     public GameDimensions(double windowWidth, double windowHeight) {
         // Verwendung der vollen Fenstergröße ohne -10
         this.width = windowWidth;
         this.height = windowHeight;
-
+        System.out.println("Window width: " + windowWidth);
+        System.out.println("Window height: " + windowHeight);
+//1920 x 1080 zb.
         this.playerWidth = windowWidth * PLAYER_WIDTH_RATIO;
         this.playerHeight = windowHeight * PLAYER_HEIGHT_RATIO;
         this.enemyWidth = windowWidth * ENEMY_WIDTH_RATIO;
@@ -47,6 +51,8 @@ public class GameDimensions {
 
         this.playerSpeedBase = windowWidth * (5.0 / 800.0); // War windowWidth * (5.0 / 800.0)
         this.projectileSpeedBase = windowHeight * (8.0 / 600.0); // War windowHeight * (8.0 / 600.0)
+        this.winHeight = windowHeight;
+        this.winWidth = windowWidth;
     }
 
     public double getWidth() { return width; }
@@ -61,6 +67,8 @@ public class GameDimensions {
     public double getProjectileHeight() { return projectileHeight; }
     public double getPlayerSpeed() { return playerSpeedBase; }
     public double getProjectileSpeed() { return projectileSpeedBase; }
+    public double getWinHeight() { return winHeight; }
+    public double getWinWidth() { return winWidth; }
 
     public static final int ENEMIES_PER_ROW = 10;
     public static final int ENEMY_ROWS = 4;
